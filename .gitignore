@@ -3,6 +3,7 @@
 .env
 .env.backup
 .env.production
+.env.before-lan-*
 .phpactor.json
 .phpunit.result.cache
 /.codex
@@ -21,6 +22,7 @@
 /storage/*.key
 /storage/pail
 /vendor
+/deployment/xampp/portable/
 _ide_helper.php
 Homestead.json
 Homestead.yaml

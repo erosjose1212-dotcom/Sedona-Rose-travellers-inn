@@ -1,0 +1,58 @@
+Define SRVROOT "@APACHE_ROOT@"
+ServerRoot "${SRVROOT}"
+Listen @LAN_IP@:80
+ServerName @LAN_IP@:80
+ServerTokens Prod
+ServerSignature Off
+
+LoadModule access_compat_module modules/mod_access_compat.so
+LoadModule authz_core_module modules/mod_authz_core.so
+LoadModule authz_host_module modules/mod_authz_host.so
+LoadModule authz_user_module modules/mod_authz_user.so
+LoadModule dir_module modules/mod_dir.so
+LoadModule env_module modules/mod_env.so
+LoadModule log_config_module modules/mod_log_config.so
+LoadModule mime_module modules/mod_mime.so
+LoadModule rewrite_module modules/mod_rewrite.so
+LoadModule headers_module modules/mod_headers.so
+
+LoadFile "@PHP_ROOT@/php8ts.dll"
+LoadFile "@PHP_ROOT@/libsqlite3.dll"
+LoadModule php_module "@PHP_ROOT@/php8apache2_4.dll"
+PHPIniDir "@PHP_ROOT@"
+<FilesMatch "\.php$">
+    SetHandler application/x-httpd-php
+</FilesMatch>
+
+ThreadsPerChild 64
+MaxConnectionsPerChild 1000
+AcceptFilter http none
+Timeout 120
+KeepAlive On
+MaxKeepAliveRequests 100
+KeepAliveTimeout 5
+PidFile "logs/sedona-rose.pid"
+ErrorLog "logs/sedona-rose-error.log"
+LogLevel warn
+LogFormat "%h %l %u %t \"%r\" %>s %b" common
+CustomLog "logs/sedona-rose-access.log" common
+TypesConfig "conf/mime.types"
+DirectoryIndex index.php index.html
+
+<Directory />
+    AllowOverride None
+    Require all denied
+</Directory>
+
+<VirtualHost @LAN_IP@:80>
+    ServerName @LAN_IP@
+    DocumentRoot "@PROJECT_ROOT@/public"
+    <Directory "@PROJECT_ROOT@/public">
+        Options +FollowSymLinks -Indexes
+        AllowOverride All
+        Require ip 127.0.0.1 ::1 192.168.0.0/24
+    </Directory>
+    <FilesMatch "^\.">
+        Require all denied
+    </FilesMatch>
+</VirtualHost>

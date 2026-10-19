@@ -13,7 +13,50 @@ Prepared: 19 October 2026. These instructions apply to the separate **Sedona Ros
 | Rooms 9–20 | Premium Room |
 | Room 12 | Premium guest room; `is_staff_quarters = false` |
 | Database | This folder's `database\database.sqlite` |
-| Local URL | `http://127.0.0.1:8017` |
+| LAN server | `192.168.0.106` |
+| Staff URL | `http://192.168.0.106/login` (HTTP port 80) |
+
+## Install on the Rose LAN server first
+
+**Antigravity: the normal installation path is this section.** The later numbered sections are reference and manual recovery/development instructions.
+
+The folder now includes a portable XAMPP-style Apache/PHP server under `deployment\xampp\portable`, plus the original XAMPP configuration files under `deployment\xampp\reference`. The portable server uses PHP **8.3.33**. This machine's stock XAMPP PHP is **8.2.12**, which cannot run this Laravel application; use the bundled runtime instead.
+
+On the new Windows server:
+
+1. Copy the **entire** `sedona-rose-travellers-inn` folder, including hidden `.env`, databases, `storage`, `vendor`, `public\build`, and `deployment\xampp\portable`, to `C:\xampp\htdocs\sedona-rose-travellers-inn`. Keep the copied folder private; it contains accounts and transaction data. The portable files are excluded from Git, so a Git clone is insufficient.
+2. Confirm the computer actually has `192.168.0.106` assigned and reserved in the router/DHCP configuration. The installer checks the address but does not change network adapters. Use a Windows **Private** or **Domain** network profile. Microsoft Visual C++ 2015–2022 x64 runtime must be installed if the bundled executables report missing runtime DLLs.
+3. Open **PowerShell as Administrator**, then run:
+
+```powershell
+Set-Location -LiteralPath 'C:\xampp\htdocs\sedona-rose-travellers-inn'
+& '.\deployment\xampp\Install-SedonaRose.ps1' -LanIp '192.168.0.106' -InstallService -AllowLanFirewall
+```
+
+Alternatively, right-click `deployment\xampp\INSTALL-ON-192.168.0.106.cmd` and select **Run as administrator**. This wrapper permits execution of the included script for that process only.
+
+The installer generates Apache/PHP configuration with the current folder paths, validates PHP and Apache, backs up `.env` and SQLite, sets Rose's LAN URL and database path, migrates without resetting data, and installs the automatic Windows service **SedonaRoseApache**. Its firewall rule allows HTTP from the local subnet on Private/Domain profiles. Apache serves only Laravel's `public` directory and accepts the `192.168.0.x` subnet. MySQL, phpMyAdmin, FileZilla, SSL certificates, and a second PHP installation are not required; the database is SQLite.
+
+If port 80 is already occupied, the installer stops with an error. Identify the program first. On this dedicated Rose server, stop the unused stock XAMPP Apache before retrying; never stop another property's server automatically. The supplied reference configurations are examples, **not files to overwrite the computer's global XAMPP configuration with**.
+
+Validate configuration without installing anything at system level:
+
+```powershell
+& '.\deployment\xampp\Install-SedonaRose.ps1' -LanIp '192.168.0.106' -ValidateOnly
+```
+
+This generates files inside Rose and checks syntax; it does not change `.env`, the database, IP settings, firewall, services, or the original Court installation. Actual LAN/service installation must run on the target computer and was not performed on the development computer.
+
+After successful installation, open `http://192.168.0.106/login` on the server **and another LAN computer**. Sign in with a copied account, verify all 20 rooms, and confirm the address on a billing preview. No hosts-file entry is needed. Keep the server powered on. The Apache Windows service starts automatically after reboot.
+
+```powershell
+Get-Service SedonaRoseApache
+Restart-Service SedonaRoseApache
+```
+
+Use the copied XAMPP control panel at `deployment\xampp\portable\xampp-control.exe` only with its accompanying Rose configuration. Windows Services/PowerShell are the authoritative service controls.
+
+If this copy moves to another path, rerun validation to regenerate paths. Review an existing service's registered executable path before reinstalling at a different location. LAN data remains on the server; cashier computers access the browser URL and do not share the SQLite file directly.
 
 Keep the existing legacy checkout UI. The earlier checkout redesign and inline-layout previews were **not approved or applied**.
 
@@ -49,7 +92,12 @@ node --version
 npm.cmd --version
 ```
 
-The verified copy uses PHP 8.3.33, Laravel 13.34.0, and the dependency versions in `composer.lock` and `package-lock.json`. PHP needs SQLite/PDO SQLite, mbstring, OpenSSL, XML/DOM, fileinfo, ZIP, and the extensions required by Composer. Use PHP 8.3 or a compatible version allowed by the lock file. Keep dependency versions locked.
+The verified copy uses PHP 8.3.33, Laravel 13.34.0, and the dependency versions in `composer.lock` and `package-lock.json`. PHP needs SQLite/PDO SQLite, mbstring, OpenSSL, XML/DOM, fileinfo, ZIP, and the extensions required by Composer. Use PHP 8.3 or a compatible version allowed by the lock file. Keep dependency versions locked. For the manual commands below, select the bundled PHP in this PowerShell session after the installer/validation has generated its configuration:
+
+```powershell
+Set-Alias -Name php -Value (Join-Path (Get-Location) 'deployment\xampp\portable\php\php.exe')
+php --version
+```
 
 Install missing runtimes from their official distributors. This copy already includes `vendor`, `node_modules`, and built frontend assets.
 
@@ -59,7 +107,7 @@ Preserve the existing `.env` and `APP_KEY` when moving this configured copy. Edi
 
 ```dotenv
 APP_NAME="Sedona Rose Travellers Inn"
-APP_URL=http://127.0.0.1:8017
+APP_URL=http://192.168.0.106
 APP_TIMEZONE=Asia/Manila
 DB_CONNECTION=sqlite
 DB_DATABASE=C:/xampp/htdocs/sedona-rose-travellers-inn/database/database.sqlite
@@ -130,7 +178,9 @@ php artisan db:seed --class=SedonaRoseRoomSeeder --force --no-interaction
 
 This seeder configures 1–8 Classic and 9–20 Premium, preserves existing stay records, and refuses to delete out-of-range rooms with stays, bookings, or orders. If it refuses, stop and review those references; preserve the history.
 
-## 6. Check storage and start the application
+## 6. Check storage; optional development server
+
+The normal LAN installation uses the `SedonaRoseApache` service above. Use `artisan serve` below only for local development, with `APP_URL=http://127.0.0.1:8017`; it does not replace the LAN service.
 
 ```powershell
 php artisan storage:link --no-interaction
