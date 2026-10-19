@@ -253,12 +253,12 @@ class AccountingController extends Controller
         $shiftBased = $range === 'today';
         $summary = $this->financials->period($startDate, $endDate, shiftBased: $shiftBased);
         $filename = $shiftBased
-            ? 'Sedona_Court_Financial_Report_'.$startDate->copy()->setTimezone('Asia/Manila')->format('Ymd').'_'.$shift.'.csv'
-            : 'Sedona_Court_Financial_Report_'.$startDate->format('Ymd').'_to_'.$endDate->format('Ymd').'.csv';
+            ? 'Sedona_Rose_Financial_Report_'.$startDate->copy()->setTimezone('Asia/Manila')->format('Ymd').'_'.$shift.'.csv'
+            : 'Sedona_Rose_Financial_Report_'.$startDate->format('Ymd').'_to_'.$endDate->format('Ymd').'.csv';
 
         return response()->streamDownload(function () use ($summary, $rangeLabel, $startDate, $endDate, $shiftBased): void {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['SEDONA COURT FINANCIAL STATEMENT']);
+            fputcsv($handle, [config('sedona.hotel_name').' FINANCIAL STATEMENT']);
             $format = $shiftBased ? 'm/d/Y h:i A' : 'm/d/Y';
             fputcsv($handle, ['Period', $rangeLabel, 'From', $startDate->copy()->setTimezone($shiftBased ? 'Asia/Manila' : config('app.timezone'))->format($format), 'To', $endDate->copy()->setTimezone($shiftBased ? 'Asia/Manila' : config('app.timezone'))->format($format)]);
             if ($shiftBased) {

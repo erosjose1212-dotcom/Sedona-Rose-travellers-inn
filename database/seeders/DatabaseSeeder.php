@@ -148,57 +148,62 @@ class DatabaseSeeder extends Seeder
             $usersByEmail[$acc['email']] = $user;
         }
 
-        // ── 4. Seed Exact Physical Room Inventory (32 Rooms) ──────────
-        $roomsData = [
-            // FLOOR 1 (11 Rooms)
-            // Rooms 1 - 5: VIP Suite
-            ['number' => '1', 'floor' => 1, 'name' => 'VIP Suite 1', 'type' => 'VIP Suite Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 695, 'base_rate_4h' => 825, 'base_rate_6h' => 1085, 'base_rate_12h' => 1395, 'base_rate_24h' => 2500, 'base_rate_promo' => 1155],
-            ['number' => '2', 'floor' => 1, 'name' => 'VIP Suite 2', 'type' => 'VIP Suite Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 695, 'base_rate_4h' => 825, 'base_rate_6h' => 1085, 'base_rate_12h' => 1395, 'base_rate_24h' => 2500, 'base_rate_promo' => 1155],
-            ['number' => '3', 'floor' => 1, 'name' => 'VIP Suite 3', 'type' => 'VIP Suite Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 695, 'base_rate_4h' => 825, 'base_rate_6h' => 1085, 'base_rate_12h' => 1395, 'base_rate_24h' => 2500, 'base_rate_promo' => 1155],
-            ['number' => '4', 'floor' => 1, 'name' => 'VIP Suite 4', 'type' => 'VIP Suite Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 695, 'base_rate_4h' => 825, 'base_rate_6h' => 1085, 'base_rate_12h' => 1395, 'base_rate_24h' => 2500, 'base_rate_promo' => 1155],
-            ['number' => '5', 'floor' => 1, 'name' => 'VIP Suite 5', 'type' => 'VIP Suite Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 695, 'base_rate_4h' => 825, 'base_rate_6h' => 1085, 'base_rate_12h' => 1395, 'base_rate_24h' => 2500, 'base_rate_promo' => 1155],
-            // Rooms 6 - 11: Classic Room
-            ['number' => '6', 'floor' => 1, 'name' => 'Classic Room 6', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
-            ['number' => '7', 'floor' => 1, 'name' => 'Classic Room 7', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
-            ['number' => '8', 'floor' => 1, 'name' => 'Classic Room 8', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
-            ['number' => '9', 'floor' => 1, 'name' => 'Classic Room 9', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
-            ['number' => '10', 'floor' => 1, 'name' => 'Classic Room 10', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
-            ['number' => '11', 'floor' => 1, 'name' => 'Classic Room 11', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
+        if (config('sedona.property_code') === 'rose') {
+            $this->call(SedonaRoseRoomSeeder::class);
+        } else {
+            // ── 4. Seed Exact Physical Room Inventory (32 Rooms) ──────────
+            $roomsData = [
+                // FLOOR 1 (11 Rooms)
+                // Rooms 1 - 5: VIP Suite
+                ['number' => '1', 'floor' => 1, 'name' => 'VIP Suite 1', 'type' => 'VIP Suite Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 695, 'base_rate_4h' => 825, 'base_rate_6h' => 1085, 'base_rate_12h' => 1395, 'base_rate_24h' => 2500, 'base_rate_promo' => 1155],
+                ['number' => '2', 'floor' => 1, 'name' => 'VIP Suite 2', 'type' => 'VIP Suite Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 695, 'base_rate_4h' => 825, 'base_rate_6h' => 1085, 'base_rate_12h' => 1395, 'base_rate_24h' => 2500, 'base_rate_promo' => 1155],
+                ['number' => '3', 'floor' => 1, 'name' => 'VIP Suite 3', 'type' => 'VIP Suite Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 695, 'base_rate_4h' => 825, 'base_rate_6h' => 1085, 'base_rate_12h' => 1395, 'base_rate_24h' => 2500, 'base_rate_promo' => 1155],
+                ['number' => '4', 'floor' => 1, 'name' => 'VIP Suite 4', 'type' => 'VIP Suite Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 695, 'base_rate_4h' => 825, 'base_rate_6h' => 1085, 'base_rate_12h' => 1395, 'base_rate_24h' => 2500, 'base_rate_promo' => 1155],
+                ['number' => '5', 'floor' => 1, 'name' => 'VIP Suite 5', 'type' => 'VIP Suite Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 695, 'base_rate_4h' => 825, 'base_rate_6h' => 1085, 'base_rate_12h' => 1395, 'base_rate_24h' => 2500, 'base_rate_promo' => 1155],
+                // Rooms 6 - 11: Classic Room
+                ['number' => '6', 'floor' => 1, 'name' => 'Classic Room 6', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
+                ['number' => '7', 'floor' => 1, 'name' => 'Classic Room 7', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
+                ['number' => '8', 'floor' => 1, 'name' => 'Classic Room 8', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
+                ['number' => '9', 'floor' => 1, 'name' => 'Classic Room 9', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
+                ['number' => '10', 'floor' => 1, 'name' => 'Classic Room 10', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
+                ['number' => '11', 'floor' => 1, 'name' => 'Classic Room 11', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
 
-            // FLOOR 2 (15 Rooms)
-            // Room 12: Staff House
-            ['number' => '12', 'floor' => 2, 'name' => 'Staff House (Quarters)', 'type' => 'Staff House', 'status' => 'available', 'is_staff_quarters' => true, 'base_rate_3h' => 0, 'base_rate_4h' => 0, 'base_rate_6h' => 0, 'base_rate_12h' => 0, 'base_rate_24h' => 0, 'base_rate_promo' => 0],
-            // Rooms 13 - 26: Premium Room
-            ['number' => '13', 'floor' => 2, 'name' => 'Premium Room 13', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
-            ['number' => '14', 'floor' => 2, 'name' => 'Premium Room 14', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
-            ['number' => '15', 'floor' => 2, 'name' => 'Premium Room 15', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
-            ['number' => '16', 'floor' => 2, 'name' => 'Premium Room 16', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
-            ['number' => '17', 'floor' => 2, 'name' => 'Premium Room 17', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
-            ['number' => '18', 'floor' => 2, 'name' => 'Premium Room 18', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
-            ['number' => '19', 'floor' => 2, 'name' => 'Premium Room 19', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
-            ['number' => '20', 'floor' => 2, 'name' => 'Premium Room 20', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
-            ['number' => '21', 'floor' => 2, 'name' => 'Premium Room 21', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
-            ['number' => '22', 'floor' => 2, 'name' => 'Premium Room 22', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
-            ['number' => '23', 'floor' => 2, 'name' => 'Premium Room 23', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
-            ['number' => '24', 'floor' => 2, 'name' => 'Premium Room 24', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
-            ['number' => '25', 'floor' => 2, 'name' => 'Premium Room 25', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
-            ['number' => '26', 'floor' => 2, 'name' => 'Premium Room 26', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
+                // FLOOR 2 (15 Rooms)
+                // Room 12: Staff House
+                ['number' => '12', 'floor' => 2, 'name' => 'Staff House (Quarters)', 'type' => 'Staff House', 'status' => 'available', 'is_staff_quarters' => true, 'base_rate_3h' => 0, 'base_rate_4h' => 0, 'base_rate_6h' => 0, 'base_rate_12h' => 0, 'base_rate_24h' => 0, 'base_rate_promo' => 0],
+                // Rooms 13 - 26: Premium Room
+                ['number' => '13', 'floor' => 2, 'name' => 'Premium Room 13', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
+                ['number' => '14', 'floor' => 2, 'name' => 'Premium Room 14', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
+                ['number' => '15', 'floor' => 2, 'name' => 'Premium Room 15', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
+                ['number' => '16', 'floor' => 2, 'name' => 'Premium Room 16', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
+                ['number' => '17', 'floor' => 2, 'name' => 'Premium Room 17', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
+                ['number' => '18', 'floor' => 2, 'name' => 'Premium Room 18', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
+                ['number' => '19', 'floor' => 2, 'name' => 'Premium Room 19', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
+                ['number' => '20', 'floor' => 2, 'name' => 'Premium Room 20', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
+                ['number' => '21', 'floor' => 2, 'name' => 'Premium Room 21', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
+                ['number' => '22', 'floor' => 2, 'name' => 'Premium Room 22', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
+                ['number' => '23', 'floor' => 2, 'name' => 'Premium Room 23', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
+                ['number' => '24', 'floor' => 2, 'name' => 'Premium Room 24', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
+                ['number' => '25', 'floor' => 2, 'name' => 'Premium Room 25', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
+                ['number' => '26', 'floor' => 2, 'name' => 'Premium Room 26', 'type' => 'Premium Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 495, 'base_rate_4h' => 625, 'base_rate_6h' => 885, 'base_rate_12h' => 1295, 'base_rate_24h' => 2300, 'base_rate_promo' => 1055],
 
-            // FLOOR 3 (6 Rooms)
-            // Rooms 27 - 32: Classic Room
-            ['number' => '27', 'floor' => 3, 'name' => 'Classic Room 27', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
-            ['number' => '28', 'floor' => 3, 'name' => 'Classic Room 28', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
-            ['number' => '29', 'floor' => 3, 'name' => 'Classic Room 29', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
-            ['number' => '30', 'floor' => 3, 'name' => 'Classic Room 30', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
-            ['number' => '31', 'floor' => 3, 'name' => 'Classic Room 31', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
-            ['number' => '32', 'floor' => 3, 'name' => 'Classic Room 32', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
-        ];
+                // FLOOR 3 (6 Rooms)
+                // Rooms 27 - 32: Classic Room
+                ['number' => '27', 'floor' => 3, 'name' => 'Classic Room 27', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
+                ['number' => '28', 'floor' => 3, 'name' => 'Classic Room 28', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
+                ['number' => '29', 'floor' => 3, 'name' => 'Classic Room 29', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
+                ['number' => '30', 'floor' => 3, 'name' => 'Classic Room 30', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
+                ['number' => '31', 'floor' => 3, 'name' => 'Classic Room 31', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
+                ['number' => '32', 'floor' => 3, 'name' => 'Classic Room 32', 'type' => 'Classic Room', 'status' => 'available', 'is_staff_quarters' => false, 'base_rate_3h' => 395, 'base_rate_4h' => 525, 'base_rate_6h' => 785, 'base_rate_12h' => 1195, 'base_rate_24h' => 2100, 'base_rate_promo' => 995],
+            ];
 
-        // Clean up legacy 12 A / 12 B if exists
-        Room::whereIn('number', ['12 A', '12 B'])->delete();
+            // Clean up legacy 12 A / 12 B if exists
+            Room::whereIn('number', ['12 A', '12 B'])->delete();
 
-        foreach ($roomsData as $r) {
-            Room::firstOrCreate(['number' => $r['number']], $r);
+            foreach ($roomsData as $r) {
+                Room::firstOrCreate(['number' => $r['number']], $r);
+            }
+
         }
 
         // ── 5. Seed Complete Food, Beverage, Misc & Services Master Catalog ──

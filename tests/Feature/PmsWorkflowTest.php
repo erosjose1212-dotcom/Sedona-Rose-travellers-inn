@@ -173,7 +173,7 @@ class PmsWorkflowTest extends TestCase
     {
         $response = $this->get(route('kiosk.view'));
         $response->assertStatus(200);
-        $response->assertSee('SEDONA COURT');
+        $response->assertSee('SEDONA ROSE');
         $response->assertSee('CLASSIC ROOM');
         $response->assertSee('PREMIUM ROOM');
         $response->assertSee('VIP SUITE ROOM');

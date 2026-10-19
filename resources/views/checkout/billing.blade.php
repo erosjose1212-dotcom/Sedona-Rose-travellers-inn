@@ -162,9 +162,9 @@
     <div class="thermal-container" id="printable-billing">
         <!-- Header -->
         <div class="text-center">
-            <img class="billing-logo" src="{{ asset('billing-sedona-logo.png') }}" alt="Sedona Court logo">
+            <img class="billing-logo" src="{{ asset('billing-sedona-logo.png') }}" alt="Sedona Rose logo">
             <div class="font-bold" style="font-size: 14px; letter-spacing: 1px;">{{ config('sedona.hotel_name') }}</div>
-            <div style="font-size: 10px;">Doña Remedios Trinidad Hwy, San Rafael, Bulacan</div>
+            <div style="font-size: 10px;">{{ config('sedona.hotel_address') }}</div>
             <div style="font-size: 10px;">TEL: +63 (0939) 905-2816 &bull; TIN: 402-881-294-000</div>
         </div>
 

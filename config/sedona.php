@@ -3,7 +3,9 @@
 $continuousShiftEnabled = env('SEDONA_CONTINUOUS_SHIFT_ENABLED', true);
 
 return [
-    'hotel_name' => 'SEDONA COURT TRAVELLERS INN',
+    'hotel_name' => env('SEDONA_HOTEL_NAME', 'SEDONA ROSE TRAVELLERS INN'),
+    'hotel_address' => env('SEDONA_HOTEL_ADDRESS', 'B.S. Aquino Avenue, St, San Roque Hinukay, Baliwag, Bulacan'),
+    'property_code' => env('SEDONA_PROPERTY', 'rose'),
     'midnight_promo_enabled' => env('SEDONA_MIDNIGHT_PROMO_ENABLED', true),
     'seed_password' => env('SEDONA_SEED_PASSWORD'),
     'continuous_shift_enabled' => $continuousShiftEnabled,

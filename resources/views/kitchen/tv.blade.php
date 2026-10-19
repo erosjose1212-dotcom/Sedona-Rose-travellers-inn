@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="refresh" content="6">
-    <title>Kitchen TV Queue Display | Sedona Court PMS</title>
+    <title>Kitchen TV Queue Display | Sedona Rose PMS</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -43,7 +43,7 @@
             <div>
                 <div class="flex items-center space-x-2">
                     <h1 class="text-xl md:text-2xl font-black text-white tracking-tight uppercase">
-                        Sedona Court &bull; Kitchen TV Queue
+                        Sedona Rose &bull; Kitchen TV Queue
                     </h1>
                     <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-widest">
                         FIFO Live Queue

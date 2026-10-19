@@ -104,7 +104,7 @@
         <div class="text-center">
             <div class="font-bold" style="font-size: 14px; letter-spacing: 1px;">{{ config('sedona.hotel_name') }}</div>
             <div style="font-size: 9px; margin-top: 2px;">DOÑA REMEDIOS TRINIDAD HWY</div>
-            <div style="font-size: 9px;">SAN RAFAEL, 3008 BULACAN</div>
+            <div style="font-size: 9px;">{{ config('sedona.hotel_address') }}</div>
             <div style="font-size: 9px;">TEL: +63 (0939) 905-2816</div>
         </div>
 

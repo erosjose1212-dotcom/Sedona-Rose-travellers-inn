@@ -79,8 +79,8 @@
     <aside class="app-sidebar" id="primaryNavMobile">
         <button type="button" class="sidebar-close" onclick="closePrimaryNav()" aria-label="Close navigation">×</button>
         <a href="{{ route('dashboard') }}" class="app-brand" aria-label="{{ config('sedona.hotel_name') }} home">
-            <img class="brand-mark" src="{{ asset('billing-sedona-logo.png') }}" alt="Sedona Court logo" width="42" height="54">
-            <span><span class="brand-name">SEDONA COURT</span><span class="brand-caption">TRAVELLERS INN</span></span>
+            <img class="brand-mark" src="{{ asset('billing-sedona-logo.png') }}" alt="Sedona Rose logo" width="42" height="54">
+            <span><span class="brand-name">SEDONA ROSE</span><span class="brand-caption">TRAVELLERS INN</span></span>
         </a>
         <div class="sidebar-content">
             <div>

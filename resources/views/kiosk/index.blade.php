@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="refresh" content="20">
-    <title>Sedona Court Travellers Inn - Live Room Availability</title>
+    <title>Sedona Rose Travellers Inn - Live Room Availability</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,7 +44,7 @@
             <div>
                 <div class="flex items-center gap-2">
                     <h1 class="text-lg md:text-xl font-display font-black tracking-tight text-slate-900 leading-tight uppercase">
-                        SEDONA COURT
+                        SEDONA ROSE
                     </h1>
                     <span class="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
                         Lobby Display
@@ -170,7 +170,7 @@
         </div>
 
         <div class="flex items-center gap-3 text-[11px] font-mono text-slate-500">
-            <span>Doña Remedios Trinidad Hwy, San Rafael, Bulacan</span>
+            <span>{{ config('sedona.hotel_address') }}</span>
             <span>&bull;</span>
             <span class="font-bold text-slate-700">TEL: +63 (0939) 905-2816</span>
             <span>&bull;</span>

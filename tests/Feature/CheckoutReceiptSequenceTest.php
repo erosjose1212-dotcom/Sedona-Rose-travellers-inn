@@ -72,7 +72,7 @@ class CheckoutReceiptSequenceTest extends TestCase
             ->assertSee('billing-sedona-logo.png')->assertDontSee('billing-facebook-qr.svg')
             ->assertDontSee('Scan to visit our Facebook page')
             ->assertDontSee('<svg', false)
-            ->assertSeeInOrder(['Sedona Court logo', 'Receipt #:', 'Attending Cashier:'], false);
+            ->assertSeeInOrder(['Sedona Rose logo', 'Receipt #:', 'Attending Cashier:'], false);
         $this->get(route('folios.billing', $folio))->assertSee('billing-sedona-logo.png')
             ->assertDontSee('billing-facebook-qr.svg')->assertDontSee('Scan to visit our Facebook page')
             ->assertSee('SCTI-20261015-001')->assertDontSee('<svg', false);

@@ -19,6 +19,7 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <env name="SEDONA_PROPERTY" value="court" force="true"/>
         <env name="SEDONA_CONTINUOUS_SHIFT_ENABLED" value="false"/>
         <env name="APP_URL" value="http://localhost"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>

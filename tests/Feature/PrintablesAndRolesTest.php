@@ -57,7 +57,7 @@ class PrintablesAndRolesTest extends TestCase
         $response->assertSee('GATE PASS');
         $response->assertSee('CLEARED FOR EXIT');
         $response->assertSee('ROOM 1');
-        $response->assertSee('SEDONA COURT');
+        $response->assertSee('SEDONA ROSE');
     }
 
     public function test_security_deposit_refund_slip()
