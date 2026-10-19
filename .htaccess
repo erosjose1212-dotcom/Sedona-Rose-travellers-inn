@@ -1,0 +1,8 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule (^|/)\. - [F,L]
+    RewriteRule ^(?:app|bootstrap|config|database|node_modules|resources|routes|storage|tests|vendor)(?:/|$) - [F,L]
+    RewriteRule ^(?:artisan|composer\.(?:json|lock)|package(?:-lock)?\.json|phpunit\.xml|vite\.config\.js|AGENTS\.md|CLAUDE\.md|README\.md)$ - [F,L]
+</IfModule>
