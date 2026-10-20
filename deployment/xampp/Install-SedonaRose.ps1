@@ -7,6 +7,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'Service-Control.ps1')
 $roseProject = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..'))
 $roseApacheRoot = Join-Path $PSScriptRoot 'portable\apache'
 $rosePhpRoot = Join-Path $PSScriptRoot 'portable\php'
@@ -71,10 +72,13 @@ foreach ($roseTemplatePair in @(
     [IO.File]::WriteAllText($roseTemplatePair[1], $roseContent, $roseEncoding)
 }
 
-& $rosePhp -c $rosePhpConfig -r 'if (PHP_VERSION_ID < 80300 || !extension_loaded("pdo_sqlite") || !extension_loaded("sqlite3")) { fwrite(STDERR, "PHP 8.3+ with SQLite is required.\n"); exit(1); } echo "PHP ", PHP_VERSION, " with SQLite: OK\n";'
-if ($LASTEXITCODE -ne 0) { throw 'The bundled PHP runtime failed its compatibility check.' }
-& $roseHttpd -f $roseApacheConfig -t
-if ($LASTEXITCODE -ne 0) { throw 'Apache configuration validation failed.' }
+$roseRuntimeCheck = @'
+if (PHP_VERSION_ID < 80300 || !extension_loaded('pdo_sqlite') || !extension_loaded('sqlite3')) { fwrite(STDERR, 'PHP 8.3+ with SQLite is required.'.PHP_EOL); exit(1); } echo 'PHP ', PHP_VERSION, ' with SQLite: OK', PHP_EOL;
+'@
+Invoke-SedonaRoseNativeCommand -Executable $rosePhp -Arguments @('-c', $rosePhpConfig, '-r', $roseRuntimeCheck) `
+    -FailureMessage 'The bundled PHP runtime failed its compatibility check'
+Invoke-SedonaRoseNativeCommand -Executable $roseHttpd -Arguments @('-f', $roseApacheConfig, '-t') `
+    -FailureMessage 'Apache configuration validation failed'
 if ($ValidateOnly) {
     Write-Output "Validation passed for http://$LanIp. Environment, database, services, firewall and network settings were not changed."
     return
@@ -91,9 +95,11 @@ if ($roseExistingService) {
         Stop-Service -Name $roseServiceName
     }
 }
-if ($InstallService -and (Get-NetTCPConnection -State Listen -LocalPort 80 -ErrorAction SilentlyContinue |
-    Where-Object { $_.LocalAddress -in @($LanIp, '0.0.0.0', '::') })) {
-    throw 'Port 80 is already in use. Identify the server using it and resolve the conflict; this script does not stop other applications.'
+if ($InstallService) {
+    $rosePortConflict = Get-SedonaRosePort80Conflict -LanIp $LanIp
+    if ($rosePortConflict) {
+        throw $rosePortConflict
+    }
 }
 
 $roseEnvPath = Join-Path $roseProject '.env'
@@ -133,20 +139,21 @@ foreach ($roseEnvKey in $roseEnvSettings.Keys) {
 Push-Location -LiteralPath $roseProject
 try {
     if ($roseEnvContent -notmatch '(?m)^APP_KEY=\S.+') {
-        & $rosePhp -c $rosePhpConfig artisan key:generate --force --no-interaction
-        if ($LASTEXITCODE -ne 0) { throw 'Application key creation failed.' }
+        Invoke-SedonaRoseNativeCommand -Executable $rosePhp -Arguments @('-c', $rosePhpConfig, 'artisan', 'key:generate', '--force', '--no-interaction') `
+            -FailureMessage 'Application key creation failed'
     }
     $roseBackup = Join-Path $roseProject ('database\before-lan-install-' + $roseStamp + '.sqlite')
-    & $rosePhp -c $rosePhpConfig -r '$src = new SQLite3($argv[1], SQLITE3_OPEN_READONLY); $dst = new SQLite3($argv[2]); if (!$src->backup($dst)) { exit(1); }' -- $roseDatabase $roseBackup
-    if ($LASTEXITCODE -ne 0) { throw 'Consistent SQLite backup failed.' }
+    Invoke-SedonaRoseNativeCommand -Executable $rosePhp -Arguments @('-c', $rosePhpConfig, '-r',
+        '$src = new SQLite3($argv[1], SQLITE3_OPEN_READONLY); $dst = new SQLite3($argv[2]); if (!$src->backup($dst)) { exit(1); }',
+        '--', $roseDatabase, $roseBackup) -FailureMessage 'Consistent SQLite backup failed'
     foreach ($roseArtisanArgs in @(
         @('optimize:clear', '--no-interaction'),
         @('migrate', '--force', '--no-interaction'),
         @('config:cache', '--no-interaction'),
         @('view:cache', '--no-interaction')
     )) {
-        & $rosePhp -c $rosePhpConfig artisan @roseArtisanArgs
-        if ($LASTEXITCODE -ne 0) { throw ('Artisan failed: ' + ($roseArtisanArgs -join ' ')) }
+        Invoke-SedonaRoseNativeCommand -Executable $rosePhp -Arguments (@('-c', $rosePhpConfig, 'artisan') + $roseArtisanArgs) `
+            -FailureMessage ('Artisan failed: ' + ($roseArtisanArgs -join ' '))
     }
 } finally {
     Pop-Location
@@ -161,11 +168,12 @@ if ($AllowLanFirewall) {
 }
 if ($InstallService) {
     if ($roseExistingService) {
-        & $roseHttpd -k config -n $roseServiceName -f $roseApacheConfig
+        $roseApacheAction = 'config'
     } else {
-        & $roseHttpd -k install -n $roseServiceName -f $roseApacheConfig
+        $roseApacheAction = 'install'
     }
-    if ($LASTEXITCODE -ne 0) { throw 'Apache service registration failed.' }
+    Invoke-SedonaRoseNativeCommand -Executable $roseHttpd -Arguments @('-k', $roseApacheAction, '-n', $roseServiceName, '-f', $roseApacheConfig) `
+        -FailureMessage 'Apache service registration failed'
     Set-Service -Name $roseServiceName -StartupType Automatic
     Start-Service -Name $roseServiceName
     $roseResponse = Invoke-WebRequest -UseBasicParsing -Uri "http://$LanIp/login" -TimeoutSec 30

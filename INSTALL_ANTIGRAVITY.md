@@ -33,11 +33,11 @@ Set-Location -LiteralPath 'C:\xampp\htdocs\sedona-rose-travellers-inn'
 & '.\deployment\xampp\Install-SedonaRose.ps1' -LanIp '192.168.0.106' -InstallService -AllowLanFirewall
 ```
 
-Alternatively, right-click `deployment\xampp\INSTALL-ON-192.168.0.106.cmd` and select **Run as administrator**. This wrapper permits execution of the included script for that process only.
+Alternatively, run `deployment\xampp\INSTALL-ON-192.168.0.106.cmd`. It requests administrator permission automatically; approve the Windows prompt. Right-click **Run as administrator** also works. This wrapper permits execution of the included script for that process only. Cancelling the prompt leaves installation unchanged.
 
 The installer generates Apache/PHP configuration with the current folder paths, validates PHP and Apache, backs up `.env` and SQLite, sets Rose's LAN URL and database path, migrates without resetting data, and installs the automatic Windows service **SedonaRoseApache**. Its firewall rule allows HTTP from the local subnet on Private/Domain profiles. Apache serves only Laravel's `public` directory and accepts the `192.168.0.x` subnet. MySQL, phpMyAdmin, FileZilla, SSL certificates, and a second PHP installation are not required; the database is SQLite.
 
-If port 80 is already occupied, the installer stops with an error. Identify the program first. On this dedicated Rose server, stop the unused stock XAMPP Apache before retrying; never stop another property's server automatically. The supplied reference configurations are examples, **not files to overwrite the computer's global XAMPP configuration with**.
+If port 80 is already occupied, the installer reports the program, process ID, and associated Windows service when available. On this dedicated Rose server, open XAMPP Control Panel and click **Stop** beside the unused stock Apache, then retry the installer. If the listed owner is another program, identify it before stopping it; the installer never stops it automatically. The supplied reference configurations are examples, **not files to overwrite the computer's global XAMPP configuration with**.
 
 Validate configuration without installing anything at system level:
 
@@ -53,6 +53,23 @@ After successful installation, open `http://192.168.0.106/login` on the server *
 Get-Service SedonaRoseApache
 Restart-Service SedonaRoseApache
 ```
+
+For routine use, the main Rose folder contains:
+
+- `START-SEDONA-ROSE.bat` — start Rose and verify its login page.
+- `STOP-SEDONA-ROSE.bat` — stop Rose without changing guest or financial data.
+
+Double-click the required file on the Rose server and approve the administrator prompt. The window stays open to show the result. These files control only `SedonaRoseApache` and verify that it belongs to this Rose folder; they do not install, migrate, or reset data. Run the installer once before using them. Already-started/stopped operations are safe to repeat.
+
+For PowerShell/Antigravity without a waiting BAT window:
+
+```powershell
+& '.\deployment\xampp\Run-SedonaRose.ps1' -Action Start
+& '.\deployment\xampp\Run-SedonaRose.ps1' -Action Stop
+& '.\deployment\xampp\Run-SedonaRose.ps1' -Action Status
+```
+
+`Status` requires no elevation. The other actions request elevation when needed. Elevated operation output is retained under `storage\logs\rose-control-*.log`. Starting/stopping controls server availability for all cashiers, so stop only when staff are ready.
 
 Use the copied XAMPP control panel at `deployment\xampp\portable\xampp-control.exe` only with its accompanying Rose configuration. Windows Services/PowerShell are the authoritative service controls.
 
