@@ -193,16 +193,6 @@
         </div>
         <div class="double-divider"></div>
 
-        <!-- Scannable Code 128 Barcode -->
-        <div style="text-align: center; margin-top: 8px;">
-            <div style="height: 34px; width: 85%; margin: 0 auto;">
-                {!! \App\Services\BarcodeService::renderSvg('ORD-' . $folio->transaction_id, 34) !!}
-            </div>
-            <div style="font-size: 9px; letter-spacing: 2px; font-weight: bold; margin-top: 3px;">
-                *ORD-{{ $folio->transaction_id }}*
-            </div>
-        </div>
-
         <div class="text-center" style="font-size: 9px; margin-top: 10px; color: #444;">
             <div>Thank you for dining with {{ config('sedona.hotel_name') }}!</div>
             <div>Order charged to Room {{ $folio->room->number ?? 'N/A' }} Folio.</div>

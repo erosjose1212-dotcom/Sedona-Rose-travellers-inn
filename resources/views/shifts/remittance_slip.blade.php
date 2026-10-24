@@ -95,6 +95,11 @@
     <div class="no-print">
         <button class="btn-print" onclick="window.print()">🖨️ Print 80mm Shift Remittance</button>
         <button class="btn-print" style="background:#4b5563; margin-left:6px;" onclick="window.close()">Close Window</button>
+        <form method="GET" style="margin-top:10px;">
+            <label>Shift date <input type="date" name="date" required value="{{ $reportPeriod['date'] }}"></label>
+            <label>Shift <select name="shift"><option value="day" @selected($reportPeriod['shift'] === 'day')>Day · 6:30 AM–6:30 PM</option><option value="night" @selected($reportPeriod['shift'] === 'night')>Night · 6:30 PM–next 6:30 AM</option></select></label>
+            <button type="submit" class="btn-print">Show shift</button>
+        </form>
     </div>
 
     <div class="slip-container" id="printable-shift-remittance">
@@ -115,7 +120,7 @@
             </div>
             <div class="row">
                 <span>OUTGOING OP:</span>
-                <span class="font-bold">{{ $shift->openedBy->name ?? 'Frontdesk Cashier' }}</span>
+                <span class="font-bold">{{ $propertyAccess ? ($shift->openedBy->name ?? 'Frontdesk Cashier') : auth()->user()->name }}</span>
             </div>
             @if(config('sedona.shift_handover_enabled') || $shift->accepted_by)
                 <div class="row">
@@ -129,7 +134,7 @@
             </div>
             <div class="row">
                 <span>ACTIVE SHIFT:</span>
-                <span class="font-bold">{{ strtoupper($shift->shift_type ?? 'DAY SHIFT') }}</span>
+                <span class="font-bold">{{ strtoupper($reportPeriod['label']) }}</span>
             </div>
             <div class="row">
                 <span>OPENED AT:</span>
@@ -137,8 +142,10 @@
             </div>
             <div class="row">
                 <span>CLOSED AT:</span>
-                <span>{{ $shift->closed_at ? $shift->closed_at->format('m/d/Y h:i A') : now()->format('m/d/Y h:i A') }}</span>
+                <span>{{ $shift->closed_at ? $shift->closed_at->format('m/d/Y h:i A') : 'DRAWER STILL OPEN' }}</span>
             </div>
+            <div style="margin-top:5px;">REPORT: {{ $reportPeriod['start']->format('m/d h:i A') }}–{{ $reportPeriod['end']->format('m/d h:i A') }}</div>
+            <div style="font-size:9px;margin-top:3px;">{{ $propertyAccess ? 'Admin/owner financial totals cover the full drawer record.' : 'Money: your transactions in this shift only. Guest activity covers all rooms.' }}</div>
         </div>
 
         <div class="divider"></div>
@@ -146,6 +153,7 @@
         <!-- Section I: Financial Reconciliation -->
         <div>
             <div class="section-header">I. RECONCILIATION SUMMARY</div>
+            @if($propertyAccess)
             <div class="row">
                 <span>STARTING CASH FLOAT:</span>
                 <span>₱{{ number_format($openingFloat, 2) }}</span>
@@ -160,7 +168,7 @@
             </div>
             <div class="dotted-divider"></div>
             <div class="row font-bold">
-                <span>TOTAL SHIFT SALES REVENUE:</span>
+                <span>TOTAL NET COLLECTIONS:</span>
                 <span>₱{{ number_format($totalRevenue, 2) }}</span>
             </div>
             <div class="row">
@@ -182,15 +190,26 @@
             </div>
             <div class="row font-bold" style="font-size: 12px;">
                 <span>ACTUAL PHYSICAL DRAWER COUNT:</span>
-                <span>₱{{ number_format($actualCash, 2) }}</span>
+                <span>{{ $actualCash === null ? 'Not counted yet' : '₱'.number_format($actualCash, 2) }}</span>
             </div>
             <div class="row font-bold" style="margin-top: 3px; font-size: 11px;">
                 <span>DRAWER VARIANCE:</span>
                 <span style="{{ $variance < 0 ? 'color: #c00;' : ($variance > 0 ? 'color: #007;' : 'color: #080;') }}">
-                    {{ $variance >= 0 ? '+' : '' }}₱{{ number_format($variance, 2) }}
-                    ({{ $variance == 0 ? 'BALANCED' : ($variance > 0 ? 'OVERAGE' : 'SHORTAGE') }})
+                    @if($variance === null)Not counted yet @else
+                        {{ $variance >= 0 ? '+' : '' }}₱{{ number_format($variance, 2) }}
+                        ({{ $variance == 0 ? 'BALANCED' : ($variance > 0 ? 'OVERAGE' : 'SHORTAGE') }})
+                    @endif
                 </span>
             </div>
+            @else
+                <div class="row"><span>MY NET CASH COLLECTIONS:</span><strong>₱{{ number_format($cashSales, 2) }}</strong></div>
+                <div class="row"><span>MY NET GCASH COLLECTIONS:</span><strong>₱{{ number_format($gcashSales, 2) }}</strong></div>
+                <div class="row font-bold"><span>MY TOTAL NET COLLECTIONS:</span><span>₱{{ number_format($totalRevenue, 2) }}</span></div>
+                <div class="row"><span>MY CASH EXPENSES:</span><span>₱{{ number_format($totalExpenses, 2) }}</span></div>
+                <div class="row"><span>MY NET CASH TRANSFERS:</span><span>₱{{ number_format($cashMovementTotal, 2) }}</span></div>
+                <div class="row font-bold"><span>MY NET CASH AFTER CASH OUTS:</span><span>₱{{ number_format($expectedCash, 2) }}</span></div>
+                <div style="font-size:9px;margin-top:4px;">Includes deposits and refunds. This is not the physical shared drawer balance.</div>
+            @endif
         </div>
 
         <div class="divider"></div>
@@ -250,6 +269,17 @@
         <!-- Section IV: Room Occupancy Status -->
         <div>
             <div class="section-header">IV. ROOM OCCUPANCY REPORT</div>
+            <div style="font-size:9px;margin-bottom:5px;">GUEST ACTIVITY · {{ $reportPeriod['date'] }} · all rooms</div>
+            <table style="width:100%;border-collapse:collapse;font-size:10px;">
+                <thead><tr style="text-align:left;border-bottom:1px dotted #000;"><th>SHIFT</th><th>CHECK-INS</th><th>CHECKOUTS</th></tr></thead>
+                <tbody>
+                    @foreach($handover['activity']['shifts'] as $activity)
+                        <tr><td style="padding:4px 0;">{{ $activity['label'] }}<br><small>{{ $activity['start']->format('g:i A') }}–{{ $activity['end']->format('g:i A') }}</small></td><td>{{ $activity['check_ins']['stays'] }} stays<br>{{ $activity['check_ins']['guests'] }} guests</td><td>{{ $activity['check_outs']['stays'] }} stays<br>{{ $activity['check_outs']['guests'] }} guests</td></tr>
+                    @endforeach
+                </tbody>
+            </table>
+            <div class="dotted-divider"></div>
+            <div style="font-size:9px;margin-bottom:5px;">CURRENT OCCUPANCY · {{ $handover['occupancyAt']->format('m/d h:i A') }}<br>Live at printing; not a historical room snapshot.</div>
             <div class="row">
                 <span>OCCUPIED ROOMS:</span>
                 <span class="font-bold">{{ $occupiedCount }} Rooms</span>
@@ -262,6 +292,17 @@
                 <span>MAINTENANCE / BLOCKED:</span>
                 <span>{{ $maintenanceCount }} Rooms</span>
             </div>
+            <table style="width:100%;font-size:9px;border-collapse:collapse;">
+                <thead><tr style="border-bottom:1px dotted #000;text-align:left;"><th>ROOM / GUESTS</th><th>CHECK-IN</th><th>EXPECTED OUT</th></tr></thead>
+                <tbody>@forelse($handover['rooms']->where('status', 'occupied') as $room)
+                    <tr><td style="padding:4px 0;">{{ $room->number }} · {{ $room->activeFolio?->guest?->headcount ?? '—' }} guests</td><td>{{ $room->activeFolio?->checked_in_at?->copy()->setTimezone('Asia/Manila')->format('m/d g:i A') ?? 'Not recorded' }}</td><td>{{ $room->activeFolio?->isOpenTime() ? 'Open Time' : ($room->activeFolio?->expected_checkout_at?->copy()->setTimezone('Asia/Manila')->format('m/d g:i A') ?? 'Not recorded') }}</td></tr>
+                @empty<tr><td colspan="3" style="padding:4px 0;">No occupied guest rooms.</td></tr>@endforelse</tbody>
+            </table>
+            <div class="dotted-divider"></div>
+            <div class="section-header">ROOM TRANSFERS · {{ strtoupper($reportPeriod['label']) }}</div>
+            @forelse($handover['transfers'] as $transfer)
+                <div style="margin:4px 0;">Room {{ $transfer['from'] }} → Room {{ $transfer['to'] }} · {{ $transfer['at']->format('g:i A') }}<br><small>{{ $transfer['reference'] }}</small></div>
+            @empty<div style="font-size:9px;">No room transfers recorded in this shift.</div>@endforelse
         </div>
 
         <div class="divider"></div>
@@ -269,7 +310,7 @@
         <!-- Section V: Counter Signatures -->
         <div class="sig-block">
             <div class="sig-line">
-                Outgoing Cashier: {{ $shift->openedBy->name ?? 'Turnover Operator' }}
+                Outgoing Cashier: {{ $propertyAccess ? ($shift->openedBy->name ?? 'Turnover Operator') : auth()->user()->name }}
             </div>
             @if(config('sedona.shift_handover_enabled') || $shift->accepted_by)
                 <div class="sig-line" style="margin-top: 20px;">

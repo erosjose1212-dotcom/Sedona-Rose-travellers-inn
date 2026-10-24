@@ -75,7 +75,7 @@ class ContinuousCashierShiftTest extends TestCase
         $this->assertDatabaseCount('payment_entries', 0);
     }
 
-    public function test_shared_drawer_dashboard_uses_the_same_shift_window_for_each_cashier(): void
+    public function test_shared_drawer_dashboard_uses_the_current_working_shift_for_each_cashier(): void
     {
         $shift = $this->drawer();
         $incoming = User::where('email', 'raquel@sedonapms.com')->firstOrFail();
@@ -85,10 +85,15 @@ class ContinuousCashierShiftTest extends TestCase
         }
         $this->travel(1)->days();
 
-        foreach ([$incoming, $shift->openedBy] as $cashier) {
+        foreach ([[$incoming, 95], [$shift->openedBy, 120]] as [$cashier, $amount]) {
+            Order::create(['user_id' => $cashier->id, 'shift_id' => $shift->id, 'transaction_id' => (string) Str::uuid(),
+                'type' => 'walkin_pos', 'status' => 'delivered', 'total' => $amount]);
+        }
+
+        foreach ([[$incoming, 95.0], [$shift->openedBy, 120.0]] as [$cashier, $amount]) {
             $this->actingAs($cashier)->get(route('dashboard'))->assertOk()
-                ->assertViewHas('myShiftRevenue', 60.0)->assertViewHas('myOrdersCount', 1)
-                ->assertViewHas('myShiftLabel', 'Shared drawer #'.$shift->id.' · opened 10/12 12:00 PM');
+                ->assertViewHas('myShiftRevenue', $amount)->assertViewHas('myOrdersCount', 1)
+                ->assertViewHas('myShiftLabel', 'Day shift · 10/13 06:30 AM–10/13 06:30 PM');
         }
     }
 

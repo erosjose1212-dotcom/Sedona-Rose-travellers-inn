@@ -170,10 +170,14 @@ class DashboardController extends Controller
             $ownsDrawer = $activeShift && $activeShift->opened_by === $myId;
             $sharesDrawer = $activeShift && config('sedona.continuous_shift_enabled') && $request->user()->can('operate-shift', $activeShift);
             $usesDrawer = $ownsDrawer || $sharesDrawer;
-            $myShiftStart = $usesDrawer ? $activeShift->opened_at : today()->startOfDay();
-            $myShiftLabel = $usesDrawer
-                ? ($sharesDrawer ? 'Shared drawer #'.$activeShift->id : ucfirst($activeShift->shift_type ?? 'shift')).' · opened '.$activeShift->opened_at->format('m/d h:i A')
-                : 'Today';
+            $hotelTime = now()->setTimezone('Asia/Manila');
+            $reportShift = $hotelTime->format('H:i') >= '06:30' && $hotelTime->format('H:i') < '18:30' ? 'day' : 'night';
+            $myPeriod = app(ShiftReportService::class)->period(null, $reportShift);
+            $myShiftStart = $myPeriod['start']->setTimezone(config('app.timezone'));
+            if ($usesDrawer && $activeShift->opened_at->greaterThan($myShiftStart)) {
+                $myShiftStart = $activeShift->opened_at;
+            }
+            $myShiftLabel = $myPeriod['label'].' · '.$myPeriod['start']->format('m/d h:i A').'–'.$myPeriod['end']->format('m/d h:i A');
 
             $myCheckIns = Folio::where('user_id', $myId)
                 ->where('checked_in_at', '>=', $myShiftStart)

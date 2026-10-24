@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Models\Folio;
+use App\Models\Room;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class ShiftReportService
 {
@@ -41,6 +43,32 @@ class ShiftReportService
         }
 
         return compact('date', 'shifts');
+    }
+
+    /** @return array<string, mixed> */
+    public function handover(string $date, string $shift): array
+    {
+        $period = $this->period($date, $shift);
+        $rooms = Room::with('activeFolio.guest')->where('is_staff_quarters', false)->orderByNumber()->get();
+        $events = DB::table('audit_logs')->where('event', 'folio.room_transferred')->where('auditable_type', Folio::class)
+            ->where('created_at', '>=', $period['start']->setTimezone(config('app.timezone')))
+            ->where('created_at', '<', $period['end']->setTimezone(config('app.timezone')))
+            ->where('created_at', '<=', now())->orderBy('created_at')->orderBy('id')->get();
+        $folios = Folio::whereIn('id', $events->pluck('auditable_id'))->get()->keyBy('id');
+        $transfers = $events->map(function ($event) use ($rooms, $folios): ?array {
+            $values = json_decode($event->new_values, true);
+            $from = $rooms->firstWhere('id', $values['before']['room_id'] ?? null);
+            $to = $rooms->firstWhere('id', $values['after']['room_id'] ?? null);
+            if (! $from || ! $to || $from->id === $to->id) {
+                return null;
+            }
+
+            return ['from' => $from->number, 'to' => $to->number,
+                'reference' => $folios->get($event->auditable_id)?->transaction_id ?? 'Stay #'.$event->auditable_id,
+                'at' => CarbonImmutable::parse($event->created_at, config('app.timezone'))->setTimezone('Asia/Manila')];
+        })->filter()->values();
+
+        return ['activity' => $this->activity($date), 'rooms' => $rooms, 'transfers' => $transfers, 'occupancyAt' => now()->setTimezone('Asia/Manila')];
     }
 
     /** @return array{stays: int, guests: int} */

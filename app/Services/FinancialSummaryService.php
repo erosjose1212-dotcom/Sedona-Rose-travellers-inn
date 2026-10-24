@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\PaymentEntry;
 use App\Models\Shift;
 use App\Models\StatementLine;
+use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -88,6 +89,36 @@ class FinancialSummaryService
         $expectedCash = round($openingFloat + $cashSales - $drawerExpenses + $cashMovements, 2);
 
         return $this->revenue($folios, $orders) + compact('shiftExpenses', 'openingFloat', 'cashSales', 'gcashSales', 'expectedCash', 'drawerExpenses');
+    }
+
+    /** @return array<string, mixed> */
+    public function operatorShift(Shift $shift, User $operator, CarbonInterface $start, CarbonInterface $end): array
+    {
+        $withinPeriod = function (Builder $query, string $column) use ($shift, $start, $end): Builder {
+            return $query->where($column, '>=', $start)->where($column, '<', $end)
+                ->where($column, '>=', $shift->opened_at)
+                ->when($shift->closed_at,
+                    fn (Builder $query): Builder => $query->where($column, '<', $shift->closed_at),
+                    fn (Builder $query): Builder => $query->where($column, '<=', now()));
+        };
+        $owned = fn (Builder $query): Builder => $query->where('user_id', $operator->id)
+            ->where(fn (Builder $query): Builder => $query->where('shift_id', $shift->id)->orWhereNull('shift_id'));
+        $entries = $withinPeriod($owned(PaymentEntry::query()), 'posted_at')->get();
+        $legacyFolios = $this->legacySettlements($start, $end, false)->filter(fn (Folio $folio): bool => (int) ($folio->checked_out_by ?? $folio->user_id) === (int) $operator->id
+            && $folio->checked_out_at->greaterThanOrEqualTo($shift->opened_at)
+            && $folio->checked_out_at->lessThan($shift->closed_at ?? now()->addSecond()));
+        [$legacyCash, $legacyGcash] = $this->tenders($legacyFolios);
+        $orders = $withinPeriod($owned(Order::where('type', 'walkin_pos')), 'created_at')->get();
+        [$posCash, $posGcash] = $this->tenders($this->legacyOrders($orders));
+        $cashSales = round((float) $entries->sum('cash_amount') + $legacyCash + $posCash, 2);
+        $gcashSales = round((float) $entries->sum('gcash_amount') + $legacyGcash + $posGcash, 2);
+        $shiftExpenses = $withinPeriod($owned(Expense::whereIn('status', ['approved', 'pending_review', 'rejected_paid'])
+            ->where('payment_source', 'cash_drawer')), 'created_at')->latest()->get();
+        $drawerExpenses = (float) $shiftExpenses->sum('amount');
+        $cashMovements = $withinPeriod(CashMovement::where('user_id', $operator->id)->where('shift_id', $shift->id), 'posted_at')->orderBy('posted_at')->get();
+
+        return compact('cashSales', 'gcashSales', 'shiftExpenses', 'drawerExpenses', 'cashMovements')
+            + ['netCash' => round($cashSales - $drawerExpenses + (float) $cashMovements->sum('amount'), 2)];
     }
 
     /** @return array<string, float> */

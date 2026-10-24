@@ -58,11 +58,6 @@
             justify-content: space-between;
             margin-bottom: 3px;
         }
-        .barcode-box {
-            text-align: center;
-            margin-top: 10px;
-            padding-top: 4px;
-        }
         .no-print {
             margin-bottom: 16px;
             text-align: center;
@@ -156,16 +151,6 @@
         </div>
 
         <div class="divider"></div>
-
-        <!-- High-Precision Code 128 Barcode -->
-        <div class="barcode-box">
-            <div style="height: 38px; width: 85%; margin: 0 auto;">
-                {!! \App\Services\BarcodeService::renderSvg($ticketNo, 38) !!}
-            </div>
-            <div style="font-size: 10px; letter-spacing: 3px; font-weight: bold; margin-top: 4px;">
-                *{{ $ticketNo }}*
-            </div>
-        </div>
 
         <div style="margin-top: 10px; text-align: center; font-size: 9px; font-style: italic; color: #444;">
             <div>Please surrender this pass to the gate security.</div>

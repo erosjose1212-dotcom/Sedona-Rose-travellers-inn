@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\CashMovement;
 use App\Models\Expense;
 use App\Models\Folio;
-use App\Models\Room;
 use App\Models\Shift;
 use App\Models\User;
 use App\Services\ApprovalService;
@@ -15,6 +14,7 @@ use App\Services\BusinessDayService;
 use App\Services\FinancialPostingService;
 use App\Services\FinancialSummaryService;
 use App\Services\ShiftAccessService;
+use App\Services\ShiftReportService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -29,6 +29,8 @@ class ShiftController extends Controller
 
     public function index(Request $request): View
     {
+        $propertyAccess = $request->user()->hasAnyRole(['admin', 'owner']) && $request->user()->can('view_all_shifts');
+        $reportPeriod = $this->reportPeriod($request);
         $activeShift = Shift::with(['openedBy', 'closedBy'])->whereNull('closed_at')->latest()->first();
         $shiftExpenses = collect();
         $openingFloat = 5000.0;
@@ -38,15 +40,17 @@ class ShiftController extends Controller
         $expectedCash = 5000.0;
         $canOperateActiveShift = $activeShift && $request->user()->can('operate-shift', $activeShift);
         if ($canOperateActiveShift) {
-            $summary = $this->financials->shift($activeShift);
+            $summary = $propertyAccess ? $this->financials->shift($activeShift)
+                : $this->financials->operatorShift($activeShift, $request->user(), $reportPeriod['start']->setTimezone(config('app.timezone')), $reportPeriod['end']->setTimezone(config('app.timezone')));
             $shiftExpenses = $summary['shiftExpenses'];
-            $openingFloat = $summary['openingFloat'];
+            $openingFloat = $summary['openingFloat'] ?? 0;
             $cashRevenue = $summary['cashSales'];
             $gcashCollections = $summary['gcashSales'];
             $totalExpenses = $summary['drawerExpenses'];
-            $expectedCash = $summary['expectedCash'];
+            $expectedCash = $summary['expectedCash'] ?? $summary['netCash'];
         }
         $pastShifts = $this->shiftAccess->visibleShifts($request->user())->with(['openedBy', 'closedBy'])
+            ->when(! $propertyAccess, fn ($query) => $query->select(['id', 'shift_date', 'shift_type', 'opened_by', 'closed_by', 'opened_at', 'closed_at', 'handoff_notes']))
             ->whereNotNull('closed_at')->latest('closed_at')->latest('id')->paginate(10);
         $pendingHandovers = Shift::whereIn('handover_status', ['pending', 'disputed', 'variance_approved'])->whereNotNull('closed_at');
         if (! ($request->user()->hasAnyRole(['admin', 'owner']) && $request->user()->can('view_all_shifts'))) {
@@ -58,7 +62,7 @@ class ShiftController extends Controller
         $pendingHandovers = config('sedona.shift_handover_enabled') ? $pendingHandovers->orderBy('id')->get() : collect();
         $drawerStatus = $this->shiftAccess->paymentStatus($request->user());
 
-        return view('shifts.index', compact('activeShift', 'pastShifts', 'shiftExpenses', 'openingFloat', 'cashRevenue', 'gcashCollections', 'totalExpenses', 'expectedCash', 'canOperateActiveShift', 'pendingHandovers', 'drawerStatus'));
+        return view('shifts.index', compact('activeShift', 'pastShifts', 'shiftExpenses', 'openingFloat', 'cashRevenue', 'gcashCollections', 'totalExpenses', 'expectedCash', 'canOperateActiveShift', 'pendingHandovers', 'drawerStatus', 'propertyAccess', 'reportPeriod'));
     }
 
     public function openShift(Request $request, AuditService $audit): RedirectResponse
@@ -189,23 +193,27 @@ class ShiftController extends Controller
         return redirect()->route('shifts.index')->with('success', 'Shift closed and drawer reconciliation recorded.');
     }
 
-    public function showRemittanceSlip(Shift $shift): View
+    public function showRemittanceSlip(Request $request, Shift $shift): View
     {
         Gate::authorize('view-shift', $shift);
+        $propertyAccess = $request->user()->hasAnyRole(['admin', 'owner']) && $request->user()->can('view_all_shifts');
+        $reportPeriod = $this->reportPeriod($request, $shift);
+        $handover = app(ShiftReportService::class)->handover($reportPeriod['date'], $reportPeriod['shift']);
         $shift->load(['openedBy', 'closedBy']);
-        $summary = $this->financials->shift($shift);
+        $summary = $propertyAccess ? $this->financials->shift($shift)
+            : $this->financials->operatorShift($shift, $request->user(), $reportPeriod['start']->setTimezone(config('app.timezone')), $reportPeriod['end']->setTimezone(config('app.timezone')));
         $cashSales = $summary['cashSales'];
-        $gcashSales = $shift->closed_at ? (float) $shift->gcash_total : $summary['gcashSales'];
+        $gcashSales = $propertyAccess && $shift->closed_at ? (float) $shift->gcash_total : $summary['gcashSales'];
         $totalRevenue = $cashSales + $gcashSales;
         $shiftExpenses = $summary['shiftExpenses'];
-        $totalExpenses = $shift->closed_at ? (float) $shift->total_expenses : $summary['drawerExpenses'];
-        $cashMovements = CashMovement::where('shift_id', $shift->id)->orderBy('posted_at')->orderBy('id')->get();
+        $totalExpenses = $propertyAccess && $shift->closed_at ? (float) $shift->total_expenses : $summary['drawerExpenses'];
+        $cashMovements = $propertyAccess ? CashMovement::where('shift_id', $shift->id)->orderBy('posted_at')->orderBy('id')->get() : $summary['cashMovements'];
         $cashMovementTotal = (float) $cashMovements->sum('amount');
-        $openingFloat = $summary['openingFloat'];
-        $expectedCash = $shift->closed_at ? (float) $shift->expected_cash : $summary['expectedCash'];
-        $actualCash = $shift->closed_at ? (float) $shift->cash_total : $expectedCash;
-        $variance = $shift->closed_at ? (float) $shift->cash_variance : 0.0;
-        $rooms = Room::where('is_staff_quarters', false)->get();
+        $openingFloat = $summary['openingFloat'] ?? 0;
+        $expectedCash = $propertyAccess ? ($shift->closed_at ? (float) $shift->expected_cash : $summary['expectedCash']) : $summary['netCash'];
+        $actualCash = $propertyAccess && $shift->closed_at ? (float) $shift->cash_total : null;
+        $variance = $propertyAccess && $shift->closed_at ? (float) $shift->cash_variance : null;
+        $rooms = $handover['rooms'];
         $occupiedCount = $rooms->where('status', 'occupied')->count();
         $availableCount = $rooms->where('status', 'available')->count();
         $maintenanceCount = $rooms->where('status', 'maintenance')->count();
@@ -214,6 +222,16 @@ class ShiftController extends Controller
 
         return view('shifts.remittance_slip', compact('shift', 'cashSales', 'gcashSales', 'totalRevenue',
             'shiftExpenses', 'totalExpenses', 'cashMovements', 'cashMovementTotal', 'openingFloat', 'expectedCash', 'actualCash', 'variance',
-            'occupiedCount', 'availableCount', 'maintenanceCount', 'incomingCashier'));
+            'occupiedCount', 'availableCount', 'maintenanceCount', 'incomingCashier', 'propertyAccess', 'reportPeriod', 'handover'));
+    }
+
+    /** @return array<string, mixed> */
+    private function reportPeriod(Request $request, ?Shift $shift = null): array
+    {
+        $filters = $request->validate(['date' => 'nullable|date_format:Y-m-d', 'shift' => 'nullable|in:day,night']);
+        $at = ($shift?->closed_at?->copy()->subSecond() ?? now())->setTimezone('Asia/Manila');
+        $defaultShift = $at->format('H:i') >= '06:30' && $at->format('H:i') < '18:30' ? 'day' : 'night';
+
+        return app(ShiftReportService::class)->period($filters['date'] ?? $at->copy()->subMinutes(390)->toDateString(), $filters['shift'] ?? $defaultShift);
     }
 }

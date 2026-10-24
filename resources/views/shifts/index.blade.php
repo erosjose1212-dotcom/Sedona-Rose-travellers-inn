@@ -11,6 +11,12 @@
 
 @section('content')
 <div class="px-3 pt-2 space-y-4 max-w-6xl mx-auto">
+    <form method="GET" class="hms-card flex flex-wrap items-end gap-3 text-xs">
+        <label>Report date<input class="form-control-hms block mt-1" type="date" name="date" required value="{{ $reportPeriod['date'] }}"></label>
+        <label>Working shift<select class="form-control-hms block mt-1" name="shift"><option value="day" @selected($reportPeriod['shift'] === 'day')>Day · 6:30 AM–6:30 PM</option><option value="night" @selected($reportPeriod['shift'] === 'night')>Night · 6:30 PM–next 6:30 AM</option></select></label>
+        <button class="rounded bg-brand px-4 py-2 font-bold text-white">Show shift</button>
+        <p class="basis-full text-slate-600">{{ $propertyAccess ? 'Admin/owner money totals cover the full drawer record.' : 'Money totals show only your transactions in the selected working shift.' }}</p>
+    </form>
 
     <!-- Header -->
     <div class="workspace-toolbar flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -46,7 +52,7 @@
                     <span>💸</span>
                     <span>Log Shift Expense (Cash Out)</span>
                 </button>
-                <a href="{{ route('shifts.remittance_slip', $activeShift->id) }}" target="_blank" class="px-3 py-1.5 bg-[#333333] hover:bg-[#222222] text-white font-bold text-xs rounded shadow flex items-center space-x-1">
+                <a href="{{ route('shifts.remittance_slip', $activeShift->id).'?'.http_build_query(['date' => $reportPeriod['date'], 'shift' => $reportPeriod['shift']]) }}" target="_blank" class="px-3 py-1.5 bg-[#333333] hover:bg-[#222222] text-white font-bold text-xs rounded shadow flex items-center space-x-1">
                     <span>🖨️</span>
                     <span>80mm Turnover Slip Preview</span>
                 </a>
@@ -63,7 +69,7 @@
     @endif
 
     @foreach($pendingHandovers as $handover)
-        <div class="hms-card"><h2 class="font-semibold">Drawer handover #{{ $handover->id }} · {{ $handover->handover_status }}</h2><p class="text-sm">Outgoing count ₱{{ $handover->cash_total }}. A different incoming operator must count and accept custody. Any disagreement requires independent review.</p>
+        <div class="hms-card"><h2 class="font-semibold">Drawer handover #{{ $handover->id }} · {{ $handover->handover_status }}</h2><p class="text-sm">@if($propertyAccess)Outgoing count ₱{{ $handover->cash_total }}. @endif A different incoming operator must count and accept custody. Any disagreement requires independent review.</p>
             @if($handover->opened_by === auth()->id())
                 <p class="mt-2 text-sm font-semibold text-amber-800">Another cashier must accept your closed drawer. Ask the incoming cashier to sign in, open Shifts &amp; Drawer, and count and accept this handover.</p>
             @elseif($handover->incoming_user_id && $handover->incoming_user_id !== auth()->id())
@@ -102,6 +108,7 @@
             </div>
 
             <!-- Reconciliation Financial Formula Grid -->
+            @if($propertyAccess)
             <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4 text-xs">
                 <div class="p-2.5 bg-slate-50 border border-slate-200">
                     <span class="font-bold text-slate-500 uppercase text-[10px] block">1. Starting Float</span>
@@ -129,6 +136,15 @@
                     <div class="font-mono font-bold text-base text-blue-700 mt-0.5">₱{{ number_format($gcashCollections, 2) }}</div>
                 </div>
             </div>
+            @else
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 text-xs">
+                    <div class="rounded border border-emerald-200 bg-emerald-50 p-3"><p>My Net Cash Collections</p><strong class="font-mono text-lg">₱{{ number_format($cashRevenue, 2) }}</strong></div>
+                    <div class="rounded border border-blue-200 bg-blue-50 p-3"><p>My Net GCash Collections</p><strong class="font-mono text-lg">₱{{ number_format($gcashCollections, 2) }}</strong></div>
+                    <div class="rounded border border-rose-200 bg-rose-50 p-3"><p>My Cash Expenses</p><strong class="font-mono text-lg">₱{{ number_format($totalExpenses, 2) }}</strong></div>
+                    <div class="rounded border border-slate-200 bg-slate-50 p-3"><p>My Net Cash After Cash Outs</p><strong class="font-mono text-lg">₱{{ number_format($expectedCash, 2) }}</strong></div>
+                </div>
+                <p class="text-xs text-slate-600 mb-3">{{ $reportPeriod['start']->format('m/d/Y h:i A') }}–{{ $reportPeriod['end']->format('m/d/Y h:i A') }} · Your collections and cash outs only. This is not the physical shared drawer balance.</p>
+            @endif
 
             <p class="text-xs text-slate-500 mb-3">Collections include deposit receipts and refunds. Earned revenue is reported separately.</p>
 
@@ -225,7 +241,7 @@
                             ₱0.00
                         </div>
                     </div>
-                    <div>
+                    @if($propertyAccess)<div>
                         <span class="font-bold text-slate-600 uppercase text-[11px]">Expected Cash Balance:</span>
                         <div class="font-mono font-bold text-slate-800 text-base">
                             ₱{{ number_format($expectedCash, 2) }}
@@ -237,6 +253,7 @@
                             ₱0.00 (Balanced)
                         </div>
                     </div>
+                    @endif
                 </div>
 
                 <div>
@@ -269,11 +286,12 @@
                         <th>TYPE</th>
                         <th>OPENED BY</th>
                         <th>CLOSED BY</th>
-                        <th>FLOAT</th>
+                        @if($propertyAccess)<th>FLOAT</th>
                         <th>EXPENSES</th>
                         <th>COUNTED CASH</th>
                         <th>EXPECTED CASH</th>
                         <th>VARIANCE</th>
+                        @endif
                         <th>HANDOFF NOTES</th>
                         <th>ACTION</th>
                     </tr>
@@ -285,13 +303,14 @@
                             <td class="font-bold uppercase text-[10px]">{{ $sh->shift_type }}</td>
                             <td>{{ $sh->openedBy->name ?? 'Staff' }}</td>
                             <td>{{ $sh->closedBy->name ?? 'Staff' }}</td>
-                            <td class="font-mono">₱{{ number_format($sh->opening_float ?? 5000, 2) }}</td>
+                            @if($propertyAccess)<td class="font-mono">₱{{ number_format($sh->opening_float ?? 5000, 2) }}</td>
                             <td class="font-mono text-rose-700">₱{{ number_format($sh->total_expenses ?? 0, 2) }}</td>
                             <td class="font-mono font-bold text-emerald-800">₱{{ number_format($sh->cash_total, 2) }}</td>
                             <td class="font-mono text-slate-700">₱{{ number_format($sh->expected_cash ?? 0, 2) }}</td>
                             <td class="font-mono font-bold {{ ($sh->cash_variance ?? 0) < 0 ? 'text-rose-700' : (($sh->cash_variance ?? 0) > 0 ? 'text-blue-700' : 'text-emerald-700') }}">
                                 {{ ($sh->cash_variance ?? 0) >= 0 ? '+' : '' }}₱{{ number_format($sh->cash_variance ?? 0, 2) }}
                             </td>
+                            @endif
                             <td class="text-left pl-2 text-[11px] text-slate-600 max-w-xs truncate">{{ $sh->handoff_notes ?? '—' }}</td>
                             <td>
                                 <a href="{{ route('shifts.remittance_slip', $sh->id) }}" target="_blank" class="px-2 py-0.5 bg-slate-800 hover:bg-black text-white text-[10px] font-bold rounded">
@@ -375,7 +394,7 @@
 
 @push('scripts')
 <script>
-    const expectedCashValue = {{ $expectedCash ?? 5000.00 }};
+    const expectedCashValue = {{ $propertyAccess ? ($expectedCash ?? 0) : 'null' }};
 
     function calculateDrawerTotal() {
         const d1000 = (parseInt(document.getElementById('d1000')?.value) || 0) * 1000;

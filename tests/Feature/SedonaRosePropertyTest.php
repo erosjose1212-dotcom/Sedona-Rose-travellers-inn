@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Folio;
 use App\Models\Guest;
 use App\Models\Room;
+use App\Models\Shift;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\SedonaRoseRoomSeeder;
@@ -81,6 +82,29 @@ class SedonaRosePropertyTest extends TestCase
         $this->assertModelExists($room);
         $this->assertModelExists($folio);
         $this->assertDatabaseCount('rooms', 32);
+    }
+
+    public function test_turnover_occupancy_includes_twenty_guest_rooms_and_room_twelve(): void
+    {
+        $this->withoutVite();
+        $this->travelTo('2026-10-25 12:00:00');
+        config(['sedona.property_code' => 'rose']);
+        $this->seed(DatabaseSeeder::class);
+        $cashier = User::where('email', 'pau@sedonapms.com')->firstOrFail();
+        $room = Room::where('number', '12')->firstOrFail();
+        $room->update(['status' => 'occupied']);
+        Folio::create(['room_id' => $room->id, 'user_id' => $cashier->id,
+            'guest_id' => Guest::create(['name' => 'Rose guest room twelve', 'headcount' => 2])->id,
+            'rate_tier' => '3h', 'room_charge' => 495, 'status' => 'active',
+            'checked_in_at' => now()->subHour(), 'expected_checkout_at' => now()->addHours(2)]);
+        $shift = Shift::create(['opened_by' => $cashier->id, 'shift_date' => today(), 'shift_type' => 'day', 'opened_at' => now()->subHours(2)]);
+
+        $response = $this->actingAs($cashier)->get(route('shifts.remittance_slip', $shift))->assertOk()
+            ->assertViewHas('occupiedCount', 1)->assertViewHas('availableCount', 19);
+
+        $this->assertCount(20, $response->viewData('handover')['rooms']);
+        $this->assertSame([$room->id], $response->viewData('handover')['rooms']->where('status', 'occupied')->values()->modelKeys());
+        $this->assertFalse($room->fresh()->is_staff_quarters);
     }
 
     public function test_login_lobby_and_billing_use_rose_branding_and_address(): void

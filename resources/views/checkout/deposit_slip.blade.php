@@ -171,16 +171,6 @@
 
         <div class="divider" style="margin-top: 14px;"></div>
 
-        <!-- Scannable Code 128 Barcode -->
-        <div style="text-align: center; margin-top: 6px;">
-            <div style="height: 34px; width: 85%; margin: 0 auto;">
-                {!! \App\Services\BarcodeService::renderSvg('DEP-' . $folio->transaction_id, 34) !!}
-            </div>
-            <div style="font-size: 9px; letter-spacing: 2px; font-weight: bold; margin-top: 3px;">
-                *DEP-{{ $folio->transaction_id }}*
-            </div>
-        </div>
-
         <div class="text-center" style="font-size: 8px; margin-top: 8px; color: #555;">
             *** OFFICIAL SECURITY DEPOSIT LEDGER SLIP • {{ config('sedona.hotel_name') }} ***
         </div>

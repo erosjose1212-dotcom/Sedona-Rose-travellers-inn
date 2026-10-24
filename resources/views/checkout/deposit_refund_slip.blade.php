@@ -188,16 +188,6 @@
             <span>Deposit remaining to refund:</span>
             <span>₱{{ number_format($remainingDeposit, 2) }}</span>
         </div>
-        <!-- Scannable Code 128 Barcode -->
-        <div style="text-align: center; margin-top: 6px;">
-            <div style="height: 34px; width: 85%; margin: 0 auto;">
-                {!! \App\Services\BarcodeService::renderSvg('REF-' . $folio->transaction_id, 34) !!}
-            </div>
-            <div style="font-size: 9px; letter-spacing: 2px; font-weight: bold; margin-top: 3px;">
-                *DEP-REF-{{ $folio->transaction_id }}*
-            </div>
-        </div>
-
         <div style="margin-top: 10px; text-align: center; font-size: 8px; color: #555;">
             {{ $refundAmount > 0 ? 'OFFICIAL DEPOSIT REFUND RECORD' : 'DEPOSIT REFUND SUMMARY' }} • {{ config('sedona.hotel_name') }}
         </div>
