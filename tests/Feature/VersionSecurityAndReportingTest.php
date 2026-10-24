@@ -149,9 +149,9 @@ class VersionSecurityAndReportingTest extends TestCase
             ->assertSessionHasErrors('denominations.1000');
         $this->assertNull($shift->fresh()->closed_at);
         $this->post(route('shifts.close', $shift), ['denominations' => ['coins' => 0]])->assertRedirect();
-        $this->get(route('shifts.remittance_slip', $shift))->assertOk()
+        $this->actingAs(User::where('email', 'admin1@sedonapms.com')->firstOrFail())->get(route('shifts.remittance_slip', $shift))->assertOk()
             ->assertViewHas('actualCash', 0.0)->assertViewHas('expectedCash', 1234.0)->assertViewHas('variance', -1234.0);
-        $this->post(route('shifts.close', $shift), ['denominations' => ['1000' => 10]])->assertSessionHasErrors('shift');
+        $this->actingAs($cashier)->post(route('shifts.close', $shift), ['denominations' => ['1000' => 10]])->assertSessionHasErrors('shift');
         $this->assertSame('0.00', $shift->fresh()->cash_total);
     }
 
@@ -271,7 +271,7 @@ class VersionSecurityAndReportingTest extends TestCase
         $this->assertSame('40.00', $newShift->fresh()->gross_revenue);
         $this->assertSame('40.00', $newShift->fresh()->kitchen_revenue);
         $this->assertSame('0.00', $newShift->fresh()->room_revenue);
-        $this->get(route('shifts.remittance_slip', $oldShift))->assertOk()->assertViewHas('cashSales', 260.0);
+        $this->actingAs(User::where('email', 'admin1@sedonapms.com')->firstOrFail())->get(route('shifts.remittance_slip', $oldShift))->assertOk()->assertViewHas('cashSales', 260.0);
         $this->get(route('shifts.remittance_slip', $newShift))->assertOk()->assertViewHas('cashSales', 40.0);
     }
 

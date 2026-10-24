@@ -11,12 +11,19 @@
 
 @section('content')
 <div class="px-3 pt-2 space-y-4 max-w-6xl mx-auto">
+    @if($propertyAccess)
     <form method="GET" class="hms-card flex flex-wrap items-end gap-3 text-xs">
         <label>Report date<input class="form-control-hms block mt-1" type="date" name="date" required value="{{ $reportPeriod['date'] }}"></label>
         <label>Working shift<select class="form-control-hms block mt-1" name="shift"><option value="day" @selected($reportPeriod['shift'] === 'day')>Day · 6:30 AM–6:30 PM</option><option value="night" @selected($reportPeriod['shift'] === 'night')>Night · 6:30 PM–next 6:30 AM</option></select></label>
         <button class="rounded bg-brand px-4 py-2 font-bold text-white">Show shift</button>
-        <p class="basis-full text-slate-600">{{ $propertyAccess ? 'Admin/owner money totals cover the full drawer record.' : 'Money totals show only your transactions in the selected working shift.' }}</p>
+        <p class="basis-full text-slate-600">Admin/owner money totals cover the full drawer record.</p>
     </form>
+    @else
+    <div class="hms-card text-xs">
+        <strong>Current working shift: {{ $reportPeriod['label'] }} · {{ $reportPeriod['start']->format('m/d/Y h:i A') }}–{{ $reportPeriod['end']->format('m/d/Y h:i A') }}</strong>
+        <p class="text-slate-600">Money totals and printing show only your transactions in the current working shift. The shift changes automatically at 6:30 AM and 6:30 PM.</p>
+    </div>
+    @endif
 
     <!-- Header -->
     <div class="workspace-toolbar flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -52,7 +59,7 @@
                     <span>💸</span>
                     <span>Log Shift Expense (Cash Out)</span>
                 </button>
-                <a href="{{ route('shifts.remittance_slip', $activeShift->id).'?'.http_build_query(['date' => $reportPeriod['date'], 'shift' => $reportPeriod['shift']]) }}" target="_blank" class="px-3 py-1.5 bg-[#333333] hover:bg-[#222222] text-white font-bold text-xs rounded shadow flex items-center space-x-1">
+                <a href="{{ route('shifts.remittance_slip', $activeShift->id).($propertyAccess ? '?'.http_build_query(['date' => $reportPeriod['date'], 'shift' => $reportPeriod['shift']]) : '') }}" target="_blank" class="px-3 py-1.5 bg-[#333333] hover:bg-[#222222] text-white font-bold text-xs rounded shadow flex items-center space-x-1">
                     <span>🖨️</span>
                     <span>80mm Turnover Slip Preview</span>
                 </a>
@@ -293,7 +300,7 @@
                         <th>VARIANCE</th>
                         @endif
                         <th>HANDOFF NOTES</th>
-                        <th>ACTION</th>
+                        @if($propertyAccess)<th>ACTION</th>@endif
                     </tr>
                 </thead>
                 <tbody>
@@ -312,11 +319,11 @@
                             </td>
                             @endif
                             <td class="text-left pl-2 text-[11px] text-slate-600 max-w-xs truncate">{{ $sh->handoff_notes ?? '—' }}</td>
-                            <td>
+                            @if($propertyAccess)<td>
                                 <a href="{{ route('shifts.remittance_slip', $sh->id) }}" target="_blank" class="px-2 py-0.5 bg-slate-800 hover:bg-black text-white text-[10px] font-bold rounded">
                                     🖨️ Slip
                                 </a>
-                            </td>
+                            </td>@endif
                         </tr>
                     @empty
                         <tr>

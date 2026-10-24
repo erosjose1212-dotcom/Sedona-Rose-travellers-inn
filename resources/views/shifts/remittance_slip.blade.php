@@ -95,11 +95,15 @@
     <div class="no-print">
         <button class="btn-print" onclick="window.print()">🖨️ Print 80mm Shift Remittance</button>
         <button class="btn-print" style="background:#4b5563; margin-left:6px;" onclick="window.close()">Close Window</button>
+        @if($propertyAccess)
         <form method="GET" style="margin-top:10px;">
             <label>Shift date <input type="date" name="date" required value="{{ $reportPeriod['date'] }}"></label>
             <label>Shift <select name="shift"><option value="day" @selected($reportPeriod['shift'] === 'day')>Day · 6:30 AM–6:30 PM</option><option value="night" @selected($reportPeriod['shift'] === 'night')>Night · 6:30 PM–next 6:30 AM</option></select></label>
             <button type="submit" class="btn-print">Show shift</button>
         </form>
+        @else
+        <p>Current working shift: {{ $reportPeriod['label'] }} · {{ $reportPeriod['start']->format('m/d/Y h:i A') }}–{{ $reportPeriod['end']->format('m/d/Y h:i A') }}</p>
+        @endif
     </div>
 
     <div class="slip-container" id="printable-shift-remittance">

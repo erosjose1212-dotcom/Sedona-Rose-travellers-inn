@@ -30,7 +30,7 @@ class ShiftController extends Controller
     public function index(Request $request): View
     {
         $propertyAccess = $request->user()->hasAnyRole(['admin', 'owner']) && $request->user()->can('view_all_shifts');
-        $reportPeriod = $this->reportPeriod($request);
+        $reportPeriod = $this->reportPeriod($request, $propertyAccess);
         $activeShift = Shift::with(['openedBy', 'closedBy'])->whereNull('closed_at')->latest()->first();
         $shiftExpenses = collect();
         $openingFloat = 5000.0;
@@ -197,7 +197,8 @@ class ShiftController extends Controller
     {
         Gate::authorize('view-shift', $shift);
         $propertyAccess = $request->user()->hasAnyRole(['admin', 'owner']) && $request->user()->can('view_all_shifts');
-        $reportPeriod = $this->reportPeriod($request, $shift);
+        abort_if(! $propertyAccess && ! $shift->isOpen(), 403, 'Cashiers can only print the current working shift.');
+        $reportPeriod = $this->reportPeriod($request, $propertyAccess, $shift);
         $handover = app(ShiftReportService::class)->handover($reportPeriod['date'], $reportPeriod['shift']);
         $shift->load(['openedBy', 'closedBy']);
         $summary = $propertyAccess ? $this->financials->shift($shift)
@@ -226,10 +227,10 @@ class ShiftController extends Controller
     }
 
     /** @return array<string, mixed> */
-    private function reportPeriod(Request $request, ?Shift $shift = null): array
+    private function reportPeriod(Request $request, bool $propertyAccess, ?Shift $shift = null): array
     {
-        $filters = $request->validate(['date' => 'nullable|date_format:Y-m-d', 'shift' => 'nullable|in:day,night']);
-        $at = ($shift?->closed_at?->copy()->subSecond() ?? now())->setTimezone('Asia/Manila');
+        $filters = $propertyAccess ? $request->validate(['date' => 'nullable|date_format:Y-m-d', 'shift' => 'nullable|in:day,night']) : [];
+        $at = ($propertyAccess && $shift?->closed_at ? $shift->closed_at->copy()->subSecond() : now())->setTimezone('Asia/Manila');
         $defaultShift = $at->format('H:i') >= '06:30' && $at->format('H:i') < '18:30' ? 'day' : 'night';
 
         return app(ShiftReportService::class)->period($filters['date'] ?? $at->copy()->subMinutes(390)->toDateString(), $filters['shift'] ?? $defaultShift);

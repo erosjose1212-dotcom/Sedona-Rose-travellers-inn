@@ -179,7 +179,7 @@ class CashierControlsTest extends TestCase
         $this->assertDatabaseCount('payment_entries', 0);
     }
 
-    public function test_closed_shift_participant_can_read_their_slip_without_receiving_drawer_custody(): void
+    public function test_closed_shift_participant_can_read_history_but_cannot_print_or_receive_drawer_custody(): void
     {
         $cashier = $this->operator();
         $shift = $this->shift($this->operator('raquel@sedonapms.com'), ['closed_at' => now(), 'handoff_notes' => 'Participated shift']);
@@ -188,7 +188,7 @@ class CashierControlsTest extends TestCase
             'kind' => 'settlement', 'cash_amount' => 50, 'gcash_amount' => 0, 'posted_at' => now()]);
 
         $this->actingAs($cashier)->get(route('shifts.index'))->assertSee('Participated shift');
-        $this->get(route('shifts.remittance_slip', $shift))->assertOk();
+        $this->get(route('shifts.remittance_slip', $shift))->assertForbidden();
         $this->assertFalse(Gate::forUser($cashier)->allows('operate-shift', $shift));
     }
 
@@ -256,8 +256,10 @@ class CashierControlsTest extends TestCase
 
         $this->actingAs($cashier)->get(route('shifts.index'))->assertSee('Own closing note')->assertDontSee('Private closing note');
         $this->get(route('shifts.remittance_slip', $other))->assertForbidden();
-        $this->get(route('shifts.remittance_slip', $own))->assertOk();
+        $this->get(route('shifts.remittance_slip', $own))->assertForbidden();
         $this->actingAs($this->operator('admin1@sedonapms.com'))->get(route('shifts.index'))->assertSee('Private closing note');
+        $this->get(route('shifts.remittance_slip', $own))->assertOk();
+        $this->get(route('shifts.remittance_slip', $other))->assertOk();
     }
 
     public function test_other_cashier_sees_custodian_without_active_drawer_totals(): void

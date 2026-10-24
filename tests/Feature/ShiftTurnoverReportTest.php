@@ -52,6 +52,7 @@ class ShiftTurnoverReportTest extends TestCase
         $expense->forceFill(['created_at' => $this->at('2026-10-25 11:00:00')])->save();
         CashMovement::factory()->create(['shift_id' => $drawer->id, 'user_id' => $actor->id, 'amount' => -10, 'posted_at' => $this->at('2026-10-25 11:00:00'), 'business_date' => '2026-10-25']);
         $params = ['date' => '2026-10-25', 'shift' => $period, 'operator_id' => $other->id, 'property_access' => 1];
+        $this->travelTo(CarbonImmutable::parse($period === 'day' ? '2026-10-25 18:29:59' : '2026-10-26 06:29:59', 'Asia/Manila'));
 
         $this->actingAs($actor)->get(route('shifts.index', $params))->assertOk()
             ->assertViewHas('cashRevenue', $cash)->assertViewHas('gcashCollections', $gcash)->assertViewHas('expectedCash', $netCash)
@@ -70,14 +71,53 @@ class ShiftTurnoverReportTest extends TestCase
         $this->payment($drawer, $incoming, '2026-10-25 22:00:00', 100, 200);
         $drawer->update(['closed_by' => $actor->id, 'closed_at' => $this->at('2026-10-26 06:30:00'), 'cash_total' => 88888.11, 'gcash_total' => 77777.22, 'expected_cash' => 99999.33]);
 
-        $this->actingAs($incoming)->get($this->slip($drawer))->assertOk()
-            ->assertViewHas('cashSales', 100.0)->assertViewHas('gcashSales', 200.0)
-            ->assertViewHas('reportPeriod', fn ($period): bool => $period['date'] === '2026-10-25' && $period['shift'] === 'night')
+        $this->actingAs($incoming)->get($this->slip($drawer))->assertForbidden()
             ->assertDontSee('88,888.11')->assertDontSee('77,777.22')->assertDontSee('99,999.33');
-        $history = $this->get(route('shifts.index'))->assertOk()->viewData('pastShifts')->first();
+        $history = $this->get(route('shifts.index'))->assertOk()->assertDontSee($this->slip($drawer), false)->viewData('pastShifts')->first();
         $this->assertArrayNotHasKey('cash_total', $history->getAttributes());
         $this->assertArrayNotHasKey('gcash_total', $history->getAttributes());
         $this->assertSame('77777.22', $drawer->fresh()->gcash_total);
+    }
+
+    #[TestWith(['2026-10-25 06:29:59', '2026-10-24', 'night'])]
+    #[TestWith(['2026-10-25 06:30:00', '2026-10-25', 'day'])]
+    #[TestWith(['2026-10-25 18:29:59', '2026-10-25', 'day'])]
+    #[TestWith(['2026-10-25 18:30:00', '2026-10-25', 'night'])]
+    #[TestWith(['2026-10-26 00:15:00', '2026-10-25', 'night'])]
+    #[TestWith(['2026-10-26 06:30:00', '2026-10-26', 'day'])]
+    public function test_cashier_cannot_select_another_period_even_by_changing_the_url(string $at, string $date, string $shift): void
+    {
+        $actor = $this->actor();
+        $drawer = $this->drawer($actor);
+        $this->travelTo(CarbonImmutable::parse($at, 'Asia/Manila'));
+        $this->payment($drawer, $actor, $at, 31, 17);
+        $this->payment($drawer, $this->actor('raquel@sedonapms.com'), $at, 222, 333);
+        $params = ['date' => '2099-12-31', 'shift' => $shift === 'day' ? 'night' : 'day', 'property_access' => 1];
+        $currentPeriod = fn (array $period): bool => $period['date'] === $date && $period['shift'] === $shift;
+
+        $this->actingAs($actor)->get(route('shifts.index', $params))->assertOk()
+            ->assertViewHas('reportPeriod', $currentPeriod)->assertViewHas('cashRevenue', 31.0)
+            ->assertDontSee('name="date"', false)->assertDontSee('name="shift"', false)
+            ->assertSee('Current working shift:')->assertSee('href="'.$this->slip($drawer).'"', false);
+        $this->get($this->slip($drawer, $params))->assertOk()
+            ->assertViewHas('reportPeriod', $currentPeriod)->assertViewHas('cashSales', 31.0)->assertViewHas('gcashSales', 17.0)
+            ->assertDontSee('name="date"', false)->assertDontSee('name="shift"', false)->assertSee('Current working shift:');
+    }
+
+    #[TestWith(['admin1@sedonapms.com'])]
+    #[TestWith(['owner@sedonapms.com'])]
+    public function test_admin_and_owner_can_select_and_print_past_periods(string $email): void
+    {
+        $drawer = $this->drawer($this->actor());
+        $drawer->update(['closed_at' => $this->at('2026-10-25 18:30:00')]);
+        $params = ['date' => '2026-10-25', 'shift' => 'day'];
+        $selectedPeriod = fn (array $period): bool => $period['date'] === '2026-10-25' && $period['shift'] === 'day';
+
+        $this->actingAs($this->actor($email))->get(route('shifts.index', $params))->assertOk()
+            ->assertViewHas('reportPeriod', $selectedPeriod)->assertSee('name="date"', false)->assertSee('name="shift"', false)
+            ->assertSee($this->slip($drawer), false);
+        $this->get($this->slip($drawer, $params))->assertOk()
+            ->assertViewHas('reportPeriod', $selectedPeriod)->assertSee('name="date"', false)->assertSee('name="shift"', false);
     }
 
     public function test_admin_keeps_full_drawer_financial_access(): void
@@ -104,7 +144,7 @@ class ShiftTurnoverReportTest extends TestCase
         $this->actingAs($actor)->post(route('folios.transfer', $active), ['target_room_id' => $target->id])->assertRedirect()->assertSessionHasNoErrors();
         $this->travelTo(CarbonImmutable::parse('2026-10-26 07:00:00', 'Asia/Manila'));
 
-        $response = $this->get($this->slip($drawer, ['date' => '2026-10-25', 'shift' => 'day']))->assertOk()
+        $response = $this->actingAs($this->actor('admin1@sedonapms.com'))->get($this->slip($drawer, ['date' => '2026-10-25', 'shift' => 'day']))->assertOk()
             ->assertSee('ROOM OCCUPANCY REPORT')->assertSee('ROOM TRANSFERS')->assertSee('Room 1 → Room 2')->assertSee('EXPECTED OUT');
         $handover = $response->viewData('handover');
         $this->assertSame(['stays' => 2, 'guests' => 4], $handover['activity']['shifts']['day']['check_ins']);
@@ -122,7 +162,7 @@ class ShiftTurnoverReportTest extends TestCase
     {
         $actor = $this->actor();
         $drawer = $this->drawer($actor);
-        $this->actingAs($actor)->get(route('shifts.index', [$field => $value]))->assertSessionHasErrors($field);
+        $this->actingAs($this->actor('admin1@sedonapms.com'))->get(route('shifts.index', [$field => $value]))->assertSessionHasErrors($field);
         $this->get($this->slip($drawer, [$field => $value]))->assertSessionHasErrors($field);
     }
 
@@ -157,6 +197,7 @@ class ShiftTurnoverReportTest extends TestCase
         $journaled = $this->stay($other, '2026-10-25 08:00:00', '2026-10-25 11:00:00');
         $journaled->update(['checked_out_by' => $actor->id, 'payment_method' => 'cash', 'cash_tendered' => 300]);
         PaymentEntry::create(['folio_id' => $journaled->id, 'shift_id' => $drawer->id, 'user_id' => $actor->id, 'kind' => 'settlement', 'cash_amount' => 300, 'gcash_amount' => 0, 'posted_at' => $this->at('2026-10-25 11:00:00')]);
+        $this->travelTo(CarbonImmutable::parse('2026-10-25 12:00:00', 'Asia/Manila'));
 
         $this->actingAs($actor)->get($this->slip($drawer, ['date' => '2026-10-25', 'shift' => 'day']))->assertOk()
             ->assertViewHas('cashSales', 695.0)->assertViewHas('gcashSales', 0.0);

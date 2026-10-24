@@ -63,7 +63,9 @@ class ShiftHandoverDisabledTest extends TestCase
         $this->assertNull($shift->fresh()->handover_status);
         $this->assertNull($shift->fresh()->incoming_user_id);
         $this->assertDatabaseHas('audit_logs', ['event' => 'shift.closed', 'auditable_id' => $shift->id]);
-        $this->get(route('shifts.remittance_slip', $shift))->assertSee('SHIFT DRAWER RECONCILIATION REPORT')->assertDontSee('Acceptance pending');
+        $this->get(route('shifts.remittance_slip', $shift))->assertForbidden();
+        $this->actingAs(User::where('email', 'admin1@sedonapms.com')->firstOrFail())->get(route('shifts.remittance_slip', $shift))
+            ->assertSee('SHIFT DRAWER RECONCILIATION REPORT')->assertDontSee('Acceptance pending');
     }
 
     public function test_disabled_handover_endpoint_does_not_change_the_existing_record(): void

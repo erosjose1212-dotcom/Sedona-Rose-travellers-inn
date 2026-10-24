@@ -209,7 +209,7 @@ class SecurityRoundupTest extends TestCase
         CashMovement::factory()->create(['shift_id' => $shift->id, 'user_id' => $cashier->id,
             'amount' => -20, 'reference' => 'CLOSED-CUSTODY-673']);
 
-        $this->actingAs($cashier)->get(route('shifts.remittance_slip', $shift))->assertOk()
+        $this->actingAs(User::where('email', 'admin1@sedonapms.com')->firstOrFail())->get(route('shifts.remittance_slip', $shift))->assertOk()
             ->assertViewHas('expectedCash', 80.0)->assertViewHas('actualCash', 77.0)->assertViewHas('variance', -3.0)
             ->assertViewHas('cashMovementTotal', -20.0)->assertSee('CLOSED-CUSTODY-673')->assertSee('SHORTAGE');
     }
