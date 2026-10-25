@@ -176,11 +176,13 @@ class CheckInController extends Controller
         $extraHours = (int) $data['hours'];
         $this->posting->execute($request, 'folio.extend', $folio->id, $data, function () use ($request, $folio, $extraHours): array {
             [$locked] = $this->lockActive($folio);
-            $locked->assertStayTimeEditable($request->user());
             if ($locked->isOpenTime()) {
                 throw ValidationException::withMessages(['hours' => 'Open Time already bills additional hours automatically at ₱130 per hour. Use package conversion for a 12-hour or 24-hour stay.']);
             }
             $checkout = $locked->room->getCheckoutForTier($locked->rate_tier, $locked->checked_in_at, (int) $locked->extra_hours + $extraHours);
+            if (! $checkout->gt($locked->expected_checkout_at)) {
+                throw ValidationException::withMessages(['hours' => 'An extension must move the current checkout time forward. Reload this stay.']);
+            }
             $this->stayRates->assertReservationAvailable($locked->room, now(), $checkout, $locked->booking_id);
             $before = $locked->only(['extra_hours', 'expected_checkout_at', 'net_total']);
             $locked->extra_hours += $extraHours;
@@ -363,21 +365,26 @@ class CheckInController extends Controller
     {
         $payload = $document === 'billing' ? $request->except(['_token', 'operation_key']) : [];
 
-        return $this->posting->execute($request, $document.'.print', $folio->id, $payload, function () use ($request, $folio, $document): array {
+        $created = false;
+        $result = $this->posting->execute($request, $document.'.print', $folio->id, $payload, function () use ($request, $folio, $document, &$created): array {
             $locked = Folio::whereKey($folio->id)->lockForUpdate()->firstOrFail();
+            $snapshot = null;
             if ($document === 'billing') {
                 abort_if($locked->status === 'voided', 409, 'Cancelled stays cannot issue billing statements.');
-                $this->viewData($locked, $request);
-                if (! $locked->isStayTimeLocked()) {
+                $snapshot = $this->billingSnapshot($this->viewData($locked, $request));
+                if ($locked->billing_printed_at === null) {
                     $locked->billing_printed_at = now();
                     $locked->save();
                 }
             }
             $copy = DB::table('audit_logs')->where('auditable_type', Folio::class)->where('auditable_id', $locked->id)->where('event', $document.'.print_requested')->count() + 1;
-            $this->audit->record($request, $document.'.print_requested', $locked, ['copy_number' => $copy, 'operation_key' => $request->input('operation_key'), 'physical_print_confirmed' => false]);
+            $this->audit->record($request, $document.'.print_requested', $locked, ['copy_number' => $copy, 'operation_key' => $request->input('operation_key'), 'physical_print_confirmed' => false, 'snapshot' => $snapshot]);
+            $created = true;
 
-            return ['copy_number' => $copy];
+            return ['copy_number' => $copy, 'snapshot' => $snapshot];
         });
+
+        return $result + ['new_print_request' => $created];
     }
 
     public function showBillingStatement(Request $request, Folio $folio): View
@@ -390,10 +397,47 @@ class CheckInController extends Controller
         try {
             $result = $this->recordPrintRequest($request, $folio, 'billing');
 
-            return view('checkout.billing', $this->viewData($folio->refresh(), $request) + ['receiptCopy' => $result['copy_number'], 'printRequested' => true]);
+            if (empty($result['snapshot'])) {
+                throw ValidationException::withMessages(['print' => 'This older print request has no saved bill snapshot. Use Print Statement / Billing again to record a new copy of the current bill.']);
+            }
+            $snapshot = $result['snapshot'];
+            $printed = clone $folio;
+            $printed->forceFill($snapshot['folio']);
+            $room = clone $folio->room;
+            $room->number = $snapshot['room_number'];
+            $room->type = $snapshot['room_type'];
+            $printed->setRelation('room', $room);
+            $bill = $snapshot['billing'];
+            foreach (['checkInTime', 'checkOutTime', 'expectedCheckoutAt'] as $field) {
+                $bill[$field] = Carbon::parse($bill[$field]);
+            }
+            $bill['preparedAt'] = Carbon::parse($bill['preparedAt'] ?? $bill['checkOutTime']);
+
+            return view('checkout.billing', $bill + ['folio' => $printed, 'receiptCopy' => $result['copy_number'], 'printRequested' => $result['new_print_request']]);
         } catch (ValidationException $exception) {
             return redirect()->route('folios.billing', $folio)->withErrors($exception->errors());
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $bill
+     * @return array<string, mixed>
+     */
+    private function billingSnapshot(array $bill): array
+    {
+        $folio = $bill['folio'];
+        $attributes = $folio->only(['transaction_id', 'receipt_number', 'status', 'stay_mode', 'rate_tier', 'checked_in_at', 'expected_checkout_at', 'extra_hours', 'discount_type', 'discount_id_ref']);
+        foreach (['checked_in_at', 'expected_checkout_at'] as $field) {
+            $attributes[$field] = $folio->{$field}->toIso8601String();
+        }
+        $values = array_diff_key($bill, array_flip(['folio', 'room', 'guest', 'discountOptions']));
+        $values['preparedAt'] = now()->toIso8601String();
+        foreach (['checkInTime', 'checkOutTime', 'expectedCheckoutAt'] as $field) {
+            $values[$field] = $bill[$field]->toIso8601String();
+        }
+
+        return ['version' => 1, 'room_id' => $folio->room_id, 'room_number' => $folio->room->number, 'room_type' => $folio->room->type,
+            'stay_reference' => $folio->transaction_id, 'receipt_reference' => $folio->receiptReference(), 'folio' => $attributes, 'billing' => $values];
     }
 
     public function showDepositSlip(Request $request, Folio $folio): View

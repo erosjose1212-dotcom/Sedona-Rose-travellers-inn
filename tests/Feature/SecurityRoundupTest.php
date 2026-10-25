@@ -157,8 +157,8 @@ class SecurityRoundupTest extends TestCase
 
         $this->actingAs($unrelated)->get(route('shifts.index'))->assertOk()
             ->assertDontSee('Outgoing count ₱12345.67')->assertDontSee('Incoming drawer handover #'.$shift->id);
-        $this->actingAs($incoming)->get(route('shifts.index'))->assertOk()->assertSee('Outgoing count ₱12345.67');
-        $this->actingAs($outgoing)->get(route('shifts.index'))->assertOk()->assertSee('Outgoing count ₱12345.67');
+        $this->actingAs($incoming)->get(route('shifts.index'))->assertOk()->assertDontSee('Outgoing count ₱12345.67')->assertSee('Count and accept handover');
+        $this->actingAs($outgoing)->get(route('shifts.index'))->assertOk()->assertDontSee('Outgoing count ₱12345.67');
         $this->actingAs(User::where('email', 'admin1@sedonapms.com')->firstOrFail())->get(route('shifts.index'))
             ->assertOk()->assertSee('Outgoing count ₱12345.67');
     }
@@ -172,7 +172,7 @@ class SecurityRoundupTest extends TestCase
             'handover_status' => 'pending', 'cash_total' => 125]);
 
         $this->actingAs(User::where('email', 'raquel@sedonapms.com')->firstOrFail())->get(route('shifts.index'))
-            ->assertOk()->assertSee('Outgoing count ₱125.00')->assertSee('Count and accept handover');
+            ->assertOk()->assertDontSee('Outgoing count ₱125.00')->assertSee('Count and accept handover');
     }
 
     /** @return array<string, array{string, string, int, float}> */
@@ -194,7 +194,7 @@ class SecurityRoundupTest extends TestCase
         CashMovement::factory()->create(['shift_id' => $shift->id, 'user_id' => $cashier->id,
             'kind' => $kind, 'destination' => $destination, 'amount' => $amount, 'reference' => 'CUSTODY-SLIP-672']);
 
-        $this->actingAs($cashier)->get(route('shifts.remittance_slip', $shift))->assertOk()
+        $this->actingAs(User::where('email', 'admin1@sedonapms.com')->firstOrFail())->get(route('shifts.remittance_slip', $shift))->assertOk()
             ->assertViewHas('expectedCash', $expected)->assertViewHas('cashMovementTotal', (float) $amount)
             ->assertSee('NET TRANSFERS / REPLENISHMENT:')->assertSee('CUSTODY-SLIP-672')
             ->assertSee(strtoupper(str_replace('_', ' ', $kind)))->assertSee(number_format($expected, 2));

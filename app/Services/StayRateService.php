@@ -20,12 +20,25 @@ class StayRateService
 
     public function convert(Folio $folio, string $tier, Request $request): void
     {
-        $folio->assertStayTimeEditable($request->user());
         if ($folio->room->getTierHours($tier) <= $folio->room->getTierHours($folio->rate_tier)) {
             throw ValidationException::withMessages(['rate_tier' => 'Choose a package longer than the current stay package.']);
         }
+        if (! $this->canConvert($folio, $tier)) {
+            throw ValidationException::withMessages(['rate_tier' => 'Choose a package that has not elapsed and does not shorten the checkout time already granted.']);
+        }
 
         $this->apply($folio, $folio->room, $tier, 0, $request, 'folio.package_converted');
+    }
+
+    public function canConvert(Folio $folio, string $tier): bool
+    {
+        if (! $folio->isActive() || $folio->room->is_staff_quarters || ! in_array($tier, ['12h', '24h'], true)
+            || $folio->room->getTierHours($tier) <= $folio->room->getTierHours($folio->rate_tier)) {
+            return false;
+        }
+        $checkout = $folio->room->getCheckoutForTier($tier, $folio->checked_in_at);
+
+        return $checkout->gt(now()) && $checkout->gte($folio->expected_checkout_at);
     }
 
     public function assertReservationAvailable(Room $room, CarbonInterface $arrival, CarbonInterface $departure, ?int $bookingId = null, bool $openTime = false): void
@@ -49,9 +62,6 @@ class StayRateService
     private function apply(Folio $folio, Room $room, string $tier, int $extraHours, Request $request, string $event): void
     {
         $checkout = $room->getCheckoutForTier($tier, $folio->checked_in_at, $extraHours);
-        if ($tier !== $folio->rate_tier || $extraHours !== (int) $folio->extra_hours || ! $checkout->equalTo($folio->expected_checkout_at)) {
-            $folio->assertStayTimeEditable($request->user());
-        }
         $openTime = $folio->isOpenTime() && $event === 'folio.room_transferred';
         $this->assertReservationAvailable($room, now(), $checkout, $folio->booking_id, $openTime);
         $before = $folio->only(['room_id', 'rate_tier', 'stay_mode', 'room_charge', 'extra_hours', 'expected_checkout_at', 'net_total']);

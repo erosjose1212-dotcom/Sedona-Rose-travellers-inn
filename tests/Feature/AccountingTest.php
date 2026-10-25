@@ -135,7 +135,7 @@ class AccountingTest extends TestCase
         // 4. Kitchen Order Slip
         $orderSlipResp = $this->actingAs($cashier)->get(route('folios.orderslip', $folio->id));
         $orderSlipResp->assertStatus(200);
-        $orderSlipResp->assertSee('GUEST ORDER SLIP / FOLIO');
+        $orderSlipResp->assertSee('ORDER SLIP');
 
         // 5. Loss Slip
         $lossSlipResp = $this->actingAs($cashier)->get(route('folios.loss_slip', $folio->id));

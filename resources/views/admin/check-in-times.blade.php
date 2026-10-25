@@ -36,9 +36,6 @@
                 <p><span class="text-slate-500">Current check-in:</span> <strong>{{ $folio->checked_in_at->format('m/d/Y h:i:s A') }}</strong></p>
                 <p><span class="text-slate-500">{{ $folio->isOpenTime() ? 'Open Time base ends:' : 'Current checkout:' }}</span> <strong>{{ $folio->expected_checkout_at->format('m/d/Y h:i A') }}</strong></p>
             </div>
-            @if($folio->isStayTimeLockedFor(auth()->user()))
-                <p class="text-sm font-bold text-slate-600">Statement / Billing issued for printing on {{ $folio->billing_printed_at->format('m/d/Y h:i A') }}. Stay times and package are locked.</p>
-            @else
             <form method="POST" action="{{ route('admin.check-in-times.update', $folio) }}" class="grid grid-cols-1 sm:grid-cols-2 gap-4" data-time-correction-form>
                 @csrf
                 <input type="hidden" name="operation_key" value="{{ old('folio_id') == $folio->id ? old('operation_key', (string) \Illuminate\Support\Str::uuid()) : (string) \Illuminate\Support\Str::uuid() }}">
@@ -54,7 +51,6 @@
                 <p class="text-sm text-slate-600 self-center">New checkout: <strong data-corrected-checkout data-package-hours="{{ $folio->room->getTierHours($folio->rate_tier) + (int) $folio->extra_hours }}" data-midnight-promo="{{ $folio->rate_tier === 'promo' ? 'true' : 'false' }}" data-extra-hours="{{ (int) $folio->extra_hours }}"></strong></p>
                 <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 font-semibold text-white hover:bg-brand-hover justify-self-start sm:justify-self-end">Save corrected time</button>
             </form>
-            @endif
         </section>
     @empty
         <div class="hms-card text-slate-600">No active guest stays to correct.</div>

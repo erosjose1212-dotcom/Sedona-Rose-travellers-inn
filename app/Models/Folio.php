@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class Folio extends Model
 {
@@ -102,23 +101,6 @@ class Folio extends Model
     public function isOpenTime(): bool
     {
         return $this->stay_mode === 'open';
-    }
-
-    public function isStayTimeLocked(): bool
-    {
-        return $this->billing_printed_at !== null;
-    }
-
-    public function isStayTimeLockedFor(?User $actor): bool
-    {
-        return $this->isStayTimeLocked() && ! ($actor?->hasAnyRole(['admin', 'owner']) ?? false);
-    }
-
-    public function assertStayTimeEditable(?User $actor = null): void
-    {
-        if ($this->isStayTimeLockedFor($actor)) {
-            throw ValidationException::withMessages(['stay_time' => 'Statement / Billing was issued for printing. Check-in time, stay extensions and package conversions are locked for this stay.']);
-        }
     }
 
     public function isActive(): bool

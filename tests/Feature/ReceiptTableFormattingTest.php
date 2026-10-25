@@ -165,13 +165,13 @@ class ReceiptTableFormattingTest extends TestCase
         $response->assertOk();
 
         $response->assertSee('receipt-table');
-        $response->assertSee('Item / Charge');
+        $response->assertSee('Item');
         $response->assertSee('Nova Multigrain Chips (40g)');
         $response->assertSee('Porksilog');
 
         $content = $response->getContent();
-        $this->assertStringContainsString('<td class="col-price font-mono">150.00</td>', $content);
-        $this->assertStringContainsString('<td class="col-total font-mono font-bold">150.00</td>', $content);
+        $this->assertStringContainsString('<td class="col-price">150.00</td>', $content);
+        $this->assertStringContainsString('<td class="col-total font-bold">150.00</td>', $content);
         $this->assertStringNotContainsString('150.00150.00', $content);
     }
 

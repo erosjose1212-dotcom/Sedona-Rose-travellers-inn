@@ -75,7 +75,6 @@ class AdminCheckInTimeController extends Controller
         $this->posting->execute($request, 'folio.checkin_time', $folio->id, $data, function () use ($request, $folio, $data): array {
             $room = Room::whereKey($folio->room_id)->lockForUpdate()->firstOrFail();
             $locked = Folio::whereKey($folio->id)->lockForUpdate()->firstOrFail();
-            $locked->assertStayTimeEditable($request->user());
             abort_unless($locked->isActive() && ! $room->is_staff_quarters, 409, 'Only active guest stays can have their check-in time corrected.');
             abort_unless((int) $locked->room_id === $room->id, 409, 'Room assignment changed. Reload this stay.');
             abort_unless($locked->checked_in_at->equalTo(Carbon::parse($data['expected_checked_in_at'])), 409, 'This check-in time has changed. Reload before correcting it.');

@@ -12,6 +12,7 @@ use App\Models\Room;
 use App\Models\Shift;
 use App\Services\DiscountService;
 use App\Services\ShiftReportService;
+use App\Services\StayRateService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -210,13 +211,13 @@ class DashboardController extends Controller
         // Owner/admin/manager get the apartment board; cashiers keep the tables.
         $boardView = auth()->check() && auth()->user()->hasAnyRole(['owner', 'admin', 'manager']);
         $folioDiscountOptions = $activeFolios->mapWithKeys(fn (Folio $folio): array => [$folio->id => DiscountService::getOptionsForFolio($folio)])->all();
+        $stayRates = app(StayRateService::class);
         $folioExtensionOptions = $activeFolios->mapWithKeys(fn (Folio $folio): array => [$folio->id => [
             'extendUrl' => route('folios.extend', $folio),
-            'timeLocked' => $folio->isStayTimeLockedFor($request->user()),
             'openTime' => $folio->isOpenTime(),
             'convertUrl' => route('folios.convert', $folio),
-            'canConvert' => ! $folio->isStayTimeLockedFor($request->user()) && ! $folio->room->is_staff_quarters && $folio->rate_tier !== '24h',
-            'conversions' => collect(['12h', '24h'])->filter(fn (string $tier): bool => ! $folio->isStayTimeLockedFor($request->user()) && ! $folio->room->is_staff_quarters && $folio->room->getTierHours($tier) > $folio->room->getTierHours($folio->rate_tier))
+            'canConvert' => collect(['12h', '24h'])->contains(fn (string $tier): bool => $stayRates->canConvert($folio, $tier)),
+            'conversions' => collect(['12h', '24h'])->filter(fn (string $tier): bool => $stayRates->canConvert($folio, $tier))
                 ->mapWithKeys(fn (string $tier): array => [$tier => ['rate' => $folio->room->getRateForTier($tier), 'checkout' => $folio->room->getCheckoutForTier($tier, $folio->checked_in_at)->format('m/d/Y h:i A')]])->all(),
             'currentTier' => $folio->rate_tier,
             'currentCheckout' => $folio->isOpenTime() ? 'Open — bills until checkout' : $folio->expected_checkout_at?->format('m/d/Y h:i A'),

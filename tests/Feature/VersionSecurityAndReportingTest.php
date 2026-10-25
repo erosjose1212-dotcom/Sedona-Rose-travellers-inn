@@ -132,7 +132,7 @@ class VersionSecurityAndReportingTest extends TestCase
             'expense_date' => today(), 'category' => 'supplies', 'description' => 'Voided', 'amount' => 500,
             'payment_source' => 'cash_drawer', 'status' => 'voided']);
 
-        $this->actingAs($cashier)->get(route('shifts.index'))->assertOk()
+        $this->actingAs(User::where('email', 'admin1@sedonapms.com')->firstOrFail())->get(route('shifts.index'))->assertOk()
             ->assertViewHas('cashRevenue', 640.0)->assertViewHas('totalExpenses', 50.0)
             ->assertViewHas('expectedCash', 1590.0);
         $this->get(route('shifts.remittance_slip', $shift))->assertOk()

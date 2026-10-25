@@ -6,6 +6,7 @@ use App\Models\Folio;
 use App\Services\AuthenticationAuditService;
 use Carbon\Carbon;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Database\Query\JoinClause;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -55,25 +56,40 @@ class TransactionHistoryController extends Controller
     {
         $filters = $this->filters($request);
         $propertyAccess = $this->propertyAccess($request);
-        $query = DB::table('audit_logs as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')->select('a.*', 'u.name as actor');
+        $query = DB::table('audit_logs as a')->leftJoin('users as u', 'u.id', '=', 'a.user_id')
+            ->leftJoin('folios as f', fn (JoinClause $join) => $join->on('f.id', '=', 'a.auditable_id')->where('a.auditable_type', Folio::class))
+            ->leftJoin('rooms as r', 'r.id', '=', 'f.room_id')
+            ->select('a.*', 'u.name as actor', 'r.number as room_number', 'f.transaction_id as stay_reference');
         if (! $propertyAccess) {
             $query->where('a.user_id', $request->user()->id);
             $query->whereNotIn('a.event', AuthenticationAuditService::EVENTS);
         }
         $this->applyFilters($query, $filters, 'a.created_at');
+        if (! empty($filters['room_id'])) {
+            $query->where('f.room_id', $filters['room_id']);
+        }
+        if (! empty($filters['folio_id'])) {
+            $query->where('f.id', $filters['folio_id']);
+        }
         if (! empty($filters['q'])) {
             $search = '%'.$filters['q'].'%';
-            $query->where(fn (Builder $q) => $q->where('a.event', 'like', $search)->orWhere('a.new_values', 'like', $search));
+            $query->where(fn (Builder $q) => $q->where('a.event', 'like', $search)->orWhere('a.new_values', 'like', $search)
+                ->orWhere('f.transaction_id', 'like', $search)->orWhere('f.receipt_number', 'like', $search));
         }
+        $printSummaries = $propertyAccess ? (clone $query)->where('a.event', 'billing.print_requested')->whereNotNull('f.id')
+            ->select('f.id as folio_id', 'f.transaction_id as stay_reference', 'r.number as room_number')
+            ->selectRaw('COUNT(a.id) as print_count, MIN(a.created_at) as first_print_at, MAX(a.created_at) as last_print_at')
+            ->groupBy('f.id', 'f.transaction_id', 'r.number')->orderByDesc('last_print_at')->orderByDesc('f.id')
+            ->paginate(10, ['*'], 'print_page')->withQueryString() : null;
         $events = $query->orderByDesc('a.created_at')->orderByDesc('a.id')->paginate(30)->withQueryString();
 
-        return view('accounting.audit', compact('events', 'filters', 'propertyAccess'));
+        return view('accounting.audit', compact('events', 'filters', 'propertyAccess', 'printSummaries'));
     }
 
     /** @return array<string, mixed> */
     private function filters(Request $request): array
     {
-        return $request->validate(['from' => 'nullable|date_format:Y-m-d', 'to' => $request->filled('from') ? 'nullable|date_format:Y-m-d|after_or_equal:from' : 'nullable|date_format:Y-m-d', 'q' => 'nullable|string|max:100', 'kind' => 'nullable|in:deposit,deposit_refund,settlement,write_off,pos_sale,pos_refund,drawer_expense,cash_drop,float_addition,bank_deposit', 'shift_id' => 'nullable|integer|min:1']);
+        return $request->validate(['from' => 'nullable|date_format:Y-m-d', 'to' => $request->filled('from') ? 'nullable|date_format:Y-m-d|after_or_equal:from' : 'nullable|date_format:Y-m-d', 'q' => 'nullable|string|max:100', 'kind' => 'nullable|in:deposit,deposit_refund,settlement,write_off,pos_sale,pos_refund,drawer_expense,cash_drop,float_addition,bank_deposit', 'shift_id' => 'nullable|integer|min:1', 'room_id' => 'nullable|integer|min:1', 'folio_id' => 'nullable|integer|min:1']);
     }
 
     /** @param array<string, mixed> $filters */

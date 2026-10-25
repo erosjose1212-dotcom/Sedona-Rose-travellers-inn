@@ -380,7 +380,7 @@ class CheckoutSecurityAndDepositLedgerTest extends TestCase
         $response->assertOk();
 
         // Must display POS items and total
-        $response->assertSee('FOOD, BEVERAGE &amp; AMENITIES', false);
+        $response->assertSee('ORDER SLIP', false);
         $response->assertSee('Tapsilog');
         $response->assertSee('San Mig Light Beer (330ml)');
         $response->assertSee('410.00'); // 320 + 90
@@ -457,7 +457,7 @@ class CheckoutSecurityAndDepositLedgerTest extends TestCase
             'status' => 'approved',
         ]);
 
-        $response = $this->actingAs($this->cashier)->get(route('shifts.index'));
+        $response = $this->actingAs(User::where('email', 'admin1@sedonapms.com')->firstOrFail())->get(route('shifts.index'));
         $response->assertOk();
 
         // Formula: 5000 (float) + 1000 (cash) - 350 (expenses) = 5650.00

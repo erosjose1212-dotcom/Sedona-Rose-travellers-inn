@@ -55,26 +55,20 @@ class CheckoutCheckInTimeTest extends TestCase
         $this->get(route('checkout.process', $folio))->assertOk()->assertViewHas('checkInTime', fn ($time): bool => $time->format('H:i') === '11:00');
     }
 
-    #[TestWith(['cashier', false])]
-    #[TestWith(['front_desk', false])]
-    #[TestWith(['admin', true])]
-    #[TestWith(['owner', true])]
-    public function test_print_lock_is_enforced_except_for_admin_and_owner(string $role, bool $allowed): void
+    #[TestWith(['cashier'])]
+    #[TestWith(['front_desk'])]
+    #[TestWith(['admin'])]
+    #[TestWith(['owner'])]
+    public function test_authorized_roles_can_correct_after_billing_was_printed(string $role): void
     {
         $actor = $this->actor($role);
         $folio = $this->stay($actor);
         $folio->forceFill(['billing_printed_at' => now()])->save();
         $page = $this->actingAs($actor)->get(route('checkout.process', $folio))->assertOk();
         $response = $this->post(route('checkout.check-in-time', $folio), $this->correction($folio));
-        if ($allowed) {
-            $page->assertSee('Save check-in time');
-            $response->assertSessionHasNoErrors();
-            $this->assertSame('2026-10-17 11:00:00', $folio->fresh()->checked_in_at->toDateTimeString());
-        } else {
-            $page->assertDontSee('name="actual_checked_in_at"', false);
-            $response->assertSessionHasErrors('stay_time');
-            $this->assertSame('2026-10-17 13:00:00', $folio->fresh()->checked_in_at->toDateTimeString());
-        }
+        $page->assertSee('Save check-in time');
+        $response->assertSessionHasNoErrors();
+        $this->assertSame('2026-10-17 11:00:00', $folio->fresh()->checked_in_at->toDateTimeString());
     }
 
     #[TestWith(['kitchen'])]

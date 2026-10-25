@@ -103,8 +103,9 @@
             <option value="hours" id="xtendHoursOption">Add extra hours at ₱130 per hour</option>
             <option value="12h" id="xtendConvert12Option">Convert to 12-hour package</option>
             <option value="24h" id="xtendConvertOption">Convert to 24-hour package</option>
+            <option value="unavailable" hidden disabled>No forward package available</option>
         </select>
-        <p id="xtendConversionHint" class="text-xs text-slate-500 mb-3">This stay is already on the longest package. Extra hours can still be added.</p>
+        <p id="xtendConversionHint" class="text-xs text-slate-500 mb-3">No forward package is available. Fixed stays can add extra hours; Open Time continues billing automatically.</p>
         <form method="POST" id="xtendForm" class="space-y-3">
             @csrf
             <input type="hidden" name="operation_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
@@ -333,10 +334,6 @@
     function openXtendModal(folioId, roomNumber) {
         const options = FOLIO_EXTENSION_OPTIONS[folioId];
         if (!options) return;
-        if (options.timeLocked) {
-            window.alert('Statement / Billing was issued for printing. Stay times and package are locked.');
-            return;
-        }
         currentExtensionOptions = options;
         document.getElementById('xtendForm').action = options.extendUrl;
         document.getElementById('convertStayForm').action = options.convertUrl;
@@ -346,7 +343,7 @@
         document.getElementById('xtendConvertOption').disabled = !options.conversions['24h'];
         document.getElementById('xtendConversionHint').classList.toggle('hidden', options.canConvert);
         document.getElementById('xtendHoursOption').disabled = Boolean(options.openTime);
-        document.getElementById('xtendMode').value = options.openTime ? '12h' : 'hours';
+        document.getElementById('xtendMode').value = options.openTime ? (options.conversions['12h'] ? '12h' : options.conversions['24h'] ? '24h' : 'unavailable') : 'hours';
         document.getElementById('xtendConversionReason').value = 'Guest requested a 24-hour package.';
         updateXtendMode();
         document.getElementById('xtendModalTitle').textContent = `Extend Stay - Room ${roomNumber}`;
@@ -356,6 +353,7 @@
         const tier = document.getElementById('xtendMode').value;
         const conversion = currentExtensionOptions?.conversions[tier];
         const converting = Boolean(conversion);
+        const unavailable = tier === 'unavailable';
         if (converting) {
             document.getElementById('xtendConversionTier').value = tier;
             document.getElementById('xtendConversionRate').textContent = `₱${Number(conversion.rate).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -363,7 +361,7 @@
             document.getElementById('xtendConversionReason').value = `Guest requested a ${tier === '12h' ? 12 : 24}-hour package.`;
             document.getElementById('xtendConversionSubmit').textContent = `Convert to ${tier === '12h' ? 12 : 24} Hours`;
         }
-        document.getElementById('xtendForm').classList.toggle('hidden', converting);
+        document.getElementById('xtendForm').classList.toggle('hidden', converting || unavailable);
         document.getElementById('convertStayForm').classList.toggle('hidden', !converting);
     }
     function closeXtendModal() {

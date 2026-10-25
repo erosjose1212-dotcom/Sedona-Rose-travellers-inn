@@ -164,10 +164,6 @@
             <span class="font-bold">ROOM {{ $folio->room->number ?? 'N/A' }} ({{ $folio->room->type ?? '' }})</span>
         </div>
         <div class="row">
-            <span>Guest Name:</span>
-            <span>{{ $folio->guest->name ?? 'Walk-In Guest' }}</span>
-        </div>
-        <div class="row">
             <span>Check-In:</span>
             <span>{{ $folio->checked_in_at->format('m/d/Y h:i A') }}</span>
         </div>

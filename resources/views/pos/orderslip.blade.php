@@ -5,199 +5,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Order Slip - Room {{ $folio->room->number ?? '' }}</title>
     <style>
-        @page {
-            size: 80mm auto;
-            margin: 0;
-        }
-        body {
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 11px;
-            line-height: 1.35;
-            color: #000;
-            background-color: #f5f5f0;
-            margin: 0;
-            padding: 16px 8px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .thermal-container {
-            width: 76mm;
-            max-width: 100%;
-            background-color: #fff;
-            border: 1px solid #ddd;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-            padding: 14px 12px;
-            box-sizing: border-box;
-        }
+        @page { size: 80mm auto; margin: 0; }
+        body { margin: 0; padding: 12px 8px; background: #f5f5f0; color: #000; font: 12px/1.2 'Courier New', monospace; }
+        .thermal-container { box-sizing: border-box; width: 72mm; max-width: 100%; margin: auto; padding: 8px; background: #fff; }
         .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        .font-bold { font-weight: bold; }
-        .divider { border-top: 1px dashed #000; margin: 6px 0; }
-        .double-divider { border-top: 2px solid #000; margin: 6px 0; }
-        .row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 2px;
-        }
-        table { width: 100%; border-collapse: collapse; }
-        .receipt-table {
-            width: 100%;
-            border-collapse: collapse;
-            table-layout: fixed;
-            margin: 4px 0;
-        }
-        .receipt-table th {
-            font-size: 11px;
-            font-weight: bold;
-            padding: 4px 0;
-            border-bottom: 1px dashed #000;
-        }
-        .receipt-table td {
-            font-size: 11px;
-            padding: 3px 0;
-            vertical-align: top;
-        }
-        .col-item {
-            width: 44%;
-            text-align: left;
-            word-break: break-word;
-            overflow-wrap: break-word;
-            padding-right: 6px !important;
-        }
-        .col-qty {
-            width: 12%;
-            text-align: center;
-            white-space: nowrap;
-            padding-left: 2px !important;
-            padding-right: 2px !important;
-        }
-        .col-price {
-            width: 22%;
-            text-align: right;
-            white-space: nowrap;
-            padding-left: 2px !important;
-            padding-right: 6px !important;
-        }
-        .col-total {
-            width: 22%;
-            text-align: right;
-            white-space: nowrap;
-            padding-left: 6px !important;
-            padding-right: 0 !important;
-        }
-        th, td { padding: 3px 0; font-size: 11px; }
-        .btn-print {
-            background-color: #0275d8;
-            color: #fff;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 12px;
-        }
-        .no-print {
-            margin-bottom: 16px;
-            text-align: center;
-        }
-        @media print {
-            body { background-color: #fff; padding: 0; }
-            .thermal-container { border: none; box-shadow: none; padding: 4px; width: 100%; }
-            .no-print { display: none; }
-        }
+        .font-bold, strong { font-weight: 700; }
+        .row { display: flex; justify-content: space-between; gap: 6px; margin: 2px 0; overflow-wrap: anywhere; }
+        .divider { border-top: 1px dashed #000; margin: 4px 0; }
+        .no-print { text-align: center; margin-bottom: 12px; }
+        button { border: 0; border-radius: 4px; padding: 8px 12px; background: #421a2b; color: #fff; cursor: pointer; }
+        @media print { body { padding: 0; background: #fff; } .thermal-container { padding: 2mm; } .no-print { display: none; } }
+
+        .receipt-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th, td { padding: 2px 0; vertical-align: top; }
+        th { border-bottom: 1px dashed #000; }
+        .col-item { width: 46%; text-align: left; overflow-wrap: anywhere; padding-right: 6px; }
+        .col-qty { width: 10%; text-align: center; }
+        .col-price { width: 21%; text-align: right; white-space: nowrap; padding-left: 6px; }
+        .col-total { width: 23%; text-align: right; white-space: nowrap; padding-left: 6px; }
+        .large-order-line { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; }
+        .large-order-line strong { margin-left: auto; white-space: nowrap; }
     </style>
 </head>
 <body>
-
-    <div class="no-print">
-        <button onclick="window.print()" class="btn-print">🖨️ Print 80mm Order Slip</button>
-        <button onclick="window.close()" class="btn-print" style="background:#4b5563; margin-left:6px;">Close</button>
-    </div>
-
+    <div class="no-print"><button onclick="window.print()">Print 80mm Order Slip</button> <button onclick="window.close()">Close</button></div>
     <div class="thermal-container" id="printable-order-slip">
-        <div class="text-center">
-            <div class="font-bold" style="font-size: 14px; letter-spacing: 1px;">{{ config('sedona.hotel_name') }}</div>
-            <div style="font-size: 9px;">KITCHEN, BAR &amp; AMENITY SALES</div>
-            <div style="font-size: 9px;">{{ config('sedona.hotel_address') }}</div>
-            <div style="font-size: 9px;">TEL: +63 (0939) 905-2816</div>
-        </div>
-
-        <div class="double-divider"></div>
-        <div class="text-center font-bold" style="font-size: 11px;">GUEST ORDER SLIP / FOLIO CHARGES (FOOD, BEVERAGE &amp; AMENITIES)</div>
+        <div class="text-center font-bold">{{ config('sedona.hotel_name') }}</div>
+        <div class="row"><strong>ORDER SLIP · ROOM {{ $folio->room->number ?? 'N/A' }}</strong></div>
+        <div>ORD-{{ $folio->transaction_id }}</div>
+        <div>{{ now()->format('m/d/Y h:i A') }}</div>
         <div class="divider"></div>
-
-        <div>
-            <div class="row">
-                <span>Order Slip Ref:</span>
-                <span class="font-bold">ORD-{{ $folio->transaction_id }}</span>
-            </div>
-            <div class="row">
-                <span>Room Assigned:</span>
-                <span class="font-bold">ROOM {{ $folio->room->number ?? 'N/A' }} ({{ $folio->room->type ?? '' }})</span>
-            </div>
-            <div class="row">
-                <span>Guest / Order For:</span>
-                <span>{{ $folio->guest->name ?? 'Walk-In Guest' }}</span>
-            </div>
-            <div class="row">
-                <span>Date &amp; Time:</span>
-                <span>{{ now()->format('m/d/Y h:i A') }}</span>
-            </div>
-            <div class="row">
-                <span>Order Type:</span>
-                <span class="font-bold">Room Add-On / POS Dining</span>
-            </div>
-        </div>
-
-        <div class="divider"></div>
-
         @php
             $posItemsList = $folio->pos_items ?? [];
-            $posTotalAmount = collect($posItemsList)->sum(fn($i) => (float)($i['subtotal'] ?? 0));
+            $posTotalAmount = collect($posItemsList)->sum(fn ($item) => (float) ($item['subtotal'] ?? 0));
         @endphp
-
         <table class="receipt-table">
-            <thead>
-                <tr>
-                    <th class="col-item">Item / Charge</th>
-                    <th class="col-qty">Qty</th>
-                    <th class="col-price">Price</th>
-                    <th class="col-total">Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($posItemsList as $item)
-                    <tr>
-                        <td class="col-item">{{ $item['name'] }}</td>
-                        <td class="col-qty font-mono">{{ $item['qty'] }}</td>
-                        <td class="col-price font-mono">{{ number_format($item['price'], 2) }}</td>
-                        <td class="col-total font-mono font-bold">{{ number_format($item['subtotal'], 2) }}</td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="4" class="text-center" style="padding: 10px 0; color: #666;">
-                            No food, beverage, or amenity items ordered.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
+            <thead><tr><th class="col-item">Item</th><th class="col-qty">Qty</th><th class="col-price">Price</th><th class="col-total">Total</th></tr></thead>
+            <tbody>@forelse($posItemsList as $item)
+                @if(strlen((string) $item['qty']) > 3 || strlen(number_format($item['price'], 2)) > 6 || strlen(number_format($item['subtotal'], 2)) > 7)
+                <tr><td colspan="4"><div>{{ $item['name'] }}</div><div class="large-order-line"><span>{{ $item['qty'] }} × {{ number_format($item['price'], 2) }}</span><strong>{{ number_format($item['subtotal'], 2) }}</strong></div></td></tr>
+                @else
+                <tr><td class="col-item">{{ $item['name'] }}</td><td class="col-qty">{{ $item['qty'] }}</td><td class="col-price">{{ number_format($item['price'], 2) }}</td><td class="col-total font-bold">{{ number_format($item['subtotal'], 2) }}</td></tr>
+                @endif
+            @empty<tr><td colspan="4">No items ordered.</td></tr>@endforelse</tbody>
         </table>
-
         <div class="divider"></div>
-
-        <div class="double-divider"></div>
-        <div class="row font-bold" style="font-size: 13px;">
-            <span>TOTAL ORDER ITEMS:</span>
-            <span>₱{{ number_format($posTotalAmount, 2) }}</span>
-        </div>
-        <div class="double-divider"></div>
-
-        <div class="text-center" style="font-size: 9px; margin-top: 10px; color: #444;">
-            <div>Thank you for dining with {{ config('sedona.hotel_name') }}!</div>
-            <div>Order charged to Room {{ $folio->room->number ?? 'N/A' }} Folio.</div>
-        </div>
+        <div class="row font-bold"><span>TOTAL ORDER ITEMS:</span><span>₱{{ number_format($posTotalAmount, 2) }}</span></div>
     </div>
-
 </body>
 </html>

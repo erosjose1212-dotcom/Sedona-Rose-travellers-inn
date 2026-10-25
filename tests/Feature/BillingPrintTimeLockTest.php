@@ -29,14 +29,14 @@ class BillingPrintTimeLockTest extends TestCase
         $this->travelTo('2026-10-17 12:00:00');
     }
 
-    public function test_preview_does_not_lock_and_print_request_locks_once_even_if_retried(): void
+    public function test_preview_does_not_issue_and_print_request_records_first_print_once_even_if_retried(): void
     {
         $actor = $this->actor('cashier');
         $folio = $this->stay($actor);
         $payload = $this->key();
         $this->actingAs($actor)->get(route('folios.billing', $folio))->assertOk()
             ->assertSee(route('folios.billing.print', $folio), false)->assertDontSee('class="billing-print-authorized"', false);
-        $this->assertFalse($folio->fresh()->isStayTimeLocked());
+        $this->assertNull($folio->fresh()->billing_printed_at);
 
         $this->post(route('folios.billing.print', $folio), $payload)->assertOk()->assertViewHas('printRequested', true)
             ->assertSee('class="billing-print-authorized"', false);
@@ -56,19 +56,19 @@ class BillingPrintTimeLockTest extends TestCase
     #[TestWith(['cashier'])]
     #[TestWith(['front_desk'])]
     #[TestWith(['manager'])]
-    public function test_staff_cannot_extend_or_convert_a_printed_stay(string $role): void
+    public function test_staff_can_extend_and_convert_a_printed_stay(string $role): void
     {
         $actor = $this->actor($role);
         $folio = $this->stay($actor);
         $this->actingAs($actor)->post(route('folios.billing.print', $folio), $this->key())->assertOk();
-        $before = $folio->fresh()->getAttributes();
-
-        $this->post(route('folios.extend', $folio), $this->key() + ['hours' => 1])->assertSessionHasErrors('stay_time');
+        $this->post(route('folios.extend', $folio), $this->key() + ['hours' => 1])->assertSessionHasNoErrors();
+        $this->assertSame(1, $folio->fresh()->extra_hours);
         foreach (['12h', '24h'] as $tier) {
-            $this->post(route('folios.convert', $folio), $this->key() + ['rate_tier' => $tier, 'reason' => 'Guest requested conversion'])->assertSessionHasErrors('stay_time');
+            $this->post(route('folios.convert', $folio), $this->key() + ['rate_tier' => $tier, 'reason' => 'Guest requested conversion'])->assertSessionHasNoErrors();
+            $this->assertSame($tier, $folio->fresh()->rate_tier);
         }
 
-        $this->assertSame($before, $folio->fresh()->getAttributes());
+        $this->assertNotNull($folio->fresh()->billing_printed_at);
     }
 
     #[TestWith(['admin'])]
@@ -83,7 +83,7 @@ class BillingPrintTimeLockTest extends TestCase
         $printedAt = $folio->fresh()->billing_printed_at->toDateTimeString();
 
         $this->actingAs($admin)->get(route('admin.check-in-times.index'))->assertOk()->assertSee('name="checked_in_at"', false);
-        $this->get(route('dashboard'))->assertViewHas('folioExtensionOptions', fn ($options): bool => ! $options[$folio->id]['timeLocked'] && count($options[$folio->id]['conversions']) === 2);
+        $this->get(route('dashboard'))->assertViewHas('folioExtensionOptions', fn ($options): bool => count($options[$folio->id]['conversions']) === 2);
         $this->post(route('admin.check-in-times.update', $folio), $data)->assertSessionHasNoErrors();
         $this->assertSame('2026-10-17 10:30:00', $folio->fresh()->checked_in_at->toDateTimeString());
         $this->post(route('folios.extend', $folio), $this->key() + ['hours' => 1])->assertSessionHasNoErrors();
@@ -97,20 +97,20 @@ class BillingPrintTimeLockTest extends TestCase
         foreach (['folio.checkin_time_corrected', 'folio.extended', 'folio.package_converted'] as $event) {
             $this->assertDatabaseHas('audit_logs', ['event' => $event, 'user_id' => $admin->id, 'auditable_id' => $folio->id]);
         }
-        $this->actingAs($cashier)->get(route('dashboard'))->assertViewHas('folioExtensionOptions', fn ($options): bool => $options[$folio->id]['timeLocked'] && $options[$folio->id]['conversions'] === []);
-        $this->post(route('folios.extend', $folio), $this->key() + ['hours' => 1, 'role' => 'admin'])->assertSessionHasErrors('stay_time');
+        $this->actingAs($cashier)->get(route('dashboard'))->assertViewHas('folioExtensionOptions', fn ($options): bool => $options[$folio->id]['conversions'] === []);
+        $this->post(route('folios.extend', $folio), $this->key() + ['hours' => 1, 'role' => 'admin'])->assertSessionHasNoErrors();
     }
 
-    public function test_open_time_cannot_convert_after_printing(): void
+    public function test_open_time_can_convert_after_printing(): void
     {
         $actor = $this->actor('cashier');
         $folio = $this->stay($actor);
         $folio->update(['stay_mode' => 'open']);
         $this->actingAs($actor)->post(route('folios.billing.print', $folio), $this->key())->assertOk();
 
-        $this->post(route('folios.convert', $folio), $this->key() + ['rate_tier' => '12h', 'reason' => 'Change Open Time'])->assertSessionHasErrors('stay_time');
+        $this->post(route('folios.convert', $folio), $this->key() + ['rate_tier' => '12h', 'reason' => 'Change Open Time'])->assertSessionHasNoErrors();
 
-        $this->assertSame('open', $folio->fresh()->stay_mode);
+        $this->assertSame('fixed', $folio->fresh()->stay_mode);
     }
 
     public function test_deposit_collection_and_checkout_keep_working_with_normal_overstay_billing(): void
@@ -133,13 +133,13 @@ class BillingPrintTimeLockTest extends TestCase
         $this->assertNotNull($folio->receipt_number);
     }
 
-    public function test_print_validation_and_audit_failure_do_not_leave_a_lock(): void
+    public function test_print_validation_and_audit_failure_do_not_record_a_print(): void
     {
         $actor = $this->actor('cashier');
         $folio = $this->stay($actor);
         $this->actingAs($actor)->post(route('folios.billing.print', $folio), [])->assertSessionHasErrors('operation_key');
         $this->post(route('folios.billing.print', $folio), $this->key() + ['room_charge' => 1])->assertSessionHasErrors('room_charge');
-        $this->assertFalse($folio->fresh()->isStayTimeLocked());
+        $this->assertNull($folio->fresh()->billing_printed_at);
         DB::listen(function (QueryExecuted $query): void {
             if (str_starts_with($query->sql, 'insert into "audit_logs"')) {
                 throw new RuntimeException('Simulated print audit failure.');
@@ -150,7 +150,7 @@ class BillingPrintTimeLockTest extends TestCase
         } finally {
             Event::forget(QueryExecuted::class);
         }
-        $this->assertFalse($folio->fresh()->isStayTimeLocked());
+        $this->assertNull($folio->fresh()->billing_printed_at);
         $this->assertDatabaseCount('financial_operations', 0);
         $this->assertSame(0, DB::table('audit_logs')->where('event', 'billing.print_requested')->count());
     }
@@ -163,7 +163,7 @@ class BillingPrintTimeLockTest extends TestCase
         $this->actingAs($kitchen)->post(route('folios.billing.print', $folio), $this->key())->assertForbidden();
         $folio->update(['status' => 'voided']);
         $this->actingAs($actor)->post(route('folios.billing.print', $folio), $this->key())->assertConflict();
-        $this->assertFalse($folio->fresh()->isStayTimeLocked());
+        $this->assertNull($folio->fresh()->billing_printed_at);
     }
 
     public function test_stale_print_parameters_redirect_to_a_clean_preview_with_an_error(): void
@@ -177,10 +177,10 @@ class BillingPrintTimeLockTest extends TestCase
 
         $this->withCookie(config('session.cookie'), session()->getId())->get(route('folios.billing', $folio))
             ->assertOk()->assertSee('Statement was not printed.');
-        $this->assertFalse($folio->fresh()->isStayTimeLocked());
+        $this->assertNull($folio->fresh()->billing_printed_at);
     }
 
-    public function test_retry_of_an_extension_completed_before_print_does_not_change_locked_time(): void
+    public function test_retry_of_an_extension_completed_before_print_does_not_add_hours_twice(): void
     {
         $actor = $this->actor('cashier');
         $folio = $this->stay($actor);

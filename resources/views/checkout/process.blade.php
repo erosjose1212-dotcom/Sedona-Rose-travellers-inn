@@ -14,7 +14,7 @@
 @endsection
 
 @section('content')
-<div class="hms-card mb-4 text-sm">Cashiers can save fixed Senior, PWD and DC discounts directly. <a href="{{ route('approvals.index', ['folio_id' => $folio->id]) }}" class="underline font-semibold">Request rate or custom discount overrides for Room {{ $folio->room->number }}</a>. Execute approved overrides, then reload checkout. Save late check-in corrections below before printing Statement / Billing. @if(auth()->user()->hasAnyRole(['owner', 'admin']))<a href="{{ route('admin.discounts.index') }}" class="underline font-semibold">Manage discount defaults and guest corrections</a>.@endif</div>
+<div class="hms-card mb-4 text-sm">Cashiers can save fixed Senior, PWD and DC discounts directly. <a href="{{ route('approvals.index', ['folio_id' => $folio->id]) }}" class="underline font-semibold">Request rate or custom discount overrides for Room {{ $folio->room->number }}</a>. Execute approved overrides, then reload checkout. Save late check-in corrections below to update the bill. Printing does not lock an active stay. @if(auth()->user()->hasAnyRole(['owner', 'admin']))<a href="{{ route('admin.discounts.index') }}" class="underline font-semibold">Manage discount defaults and guest corrections</a>.@endif</div>
     <div class="rounded-xl border p-5 mx-2 mb-4 text-sm {{ $drawerStatus['state'] === 'ready' ? 'border-emerald-200 bg-emerald-50' : 'border-amber-300 bg-amber-50' }}" role="status" id="checkoutDrawerStatus">
         <h2 class="font-bold text-brand">{{ $drawerStatus['title'] }}</h2>
         <p class="mt-1 text-slate-700">{{ $drawerStatus['message'] }}</p>
@@ -40,9 +40,6 @@
     @if(auth()->user()->hasAnyRole(['cashier', 'front_desk', 'admin', 'owner']) && ! $room->is_staff_quarters)
         <section class="hms-card mb-4">
             <h2 class="font-bold text-brand">Correct a late check-in</h2>
-            @if($folio->isStayTimeLockedFor(auth()->user()))
-                <p class="mt-2 text-sm text-slate-600">Statement / Billing has been issued for printing. Ask an admin or owner to correct the check-in time.</p>
-            @else
                 <p class="mt-2 text-sm text-slate-600">Enter when the guest actually arrived. Changes apply only after you click Save check-in time. Checkout will reload with the saved time and updated bill.</p>
                 <form method="POST" action="{{ route('checkout.check-in-time', $folio) }}" id="checkoutCheckInTimeForm" class="mt-3 flex flex-wrap items-end gap-3">
                     @csrf
@@ -56,7 +53,6 @@
                     </label>
                     <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover">Save check-in time</button>
                 </form>
-            @endif
         </section>
     @endif
 

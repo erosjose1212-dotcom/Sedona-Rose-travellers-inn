@@ -155,7 +155,8 @@
             <button type="submit" class="btn-print">🖨️ Print 80mm Statement / Billing</button>
         </form>
         <button class="btn-print" style="background:#4b5563; margin-left:6px;" onclick="window.close()">Close</button>
-        <p style="max-width:72mm;font-size:12px;">{{ auth()->user()->hasAnyRole(['admin', 'owner']) ? 'Admin and owner can still correct stay times, extend stays and convert packages after printing. Changes are recorded in the audit history.' : ($folio->isStayTimeLocked() ? 'Stay times and package are locked. Contact an admin or owner for changes.' : 'Clicking Print locks check-in time, extensions and package conversions for staff, even if you cancel the printer dialog. Admin and owner can still make changes.') }}</p>
+        <p style="max-width:72mm;font-size:12px;">Each print request is recorded. Active stays can still be corrected, extended or converted forward.</p>
+        @if(isset($receiptCopy) && !($printRequested ?? false))<p style="max-width:72mm;font-size:12px;">This request was already recorded as copy #{{ $receiptCopy }}. Use Print Statement / Billing for another tracked copy.</p>@endif
     </div>
     <p class="print-not-issued">Use the Print Statement / Billing button to issue this statement before printing.</p>
 
@@ -187,10 +188,6 @@
         <div class="row">
             <span>Room Number:</span>
             <span class="font-bold">ROOM {{ $folio->room->number ?? 'N/A' }} ({{ $folio->room->type ?? '' }})</span>
-        </div>
-        <div class="row">
-            <span>Guest Name:</span>
-            <span>{{ $folio->guest->name ?? 'Walk-In Guest' }}</span>
         </div>
         <div class="row">
             <span>Check-In:</span>
@@ -229,7 +226,7 @@
         @endif
         <div class="row">
             <span>Bill Prepared:</span>
-            <span>{{ now()->format('m/d/Y h:i A') }}</span>
+            <span>{{ ($preparedAt ?? now())->format('m/d/Y h:i A') }}</span>
         </div>
 
         <div class="divider"></div>
@@ -401,6 +398,9 @@
 
 </body>
 @if($printRequested ?? false)
-<script>window.addEventListener('load', () => window.print());</script>
+<script>
+window.addEventListener('afterprint', () => document.body.classList.remove('billing-print-authorized'));
+window.addEventListener('load', () => window.print());
+</script>
 @endif
 </html>

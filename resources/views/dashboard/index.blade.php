@@ -195,11 +195,7 @@
                                         <td colspan="5">
                                             <div class="occupied-room-actions" role="group" aria-label="Actions for room {{ $room->number }}">
                                                 <a href="{{ route('checkout.process', $folio->id) }}" class="btn-occupied font-bold">Occupied</a>
-                                                @if($folio->isStayTimeLockedFor(auth()->user()))
-                                                    <span class="text-xs font-semibold text-slate-500">Time locked · Billing printed</span>
-                                                @else
                                                     <button onclick="openXtendModal({{ $folio->id }}, '{{ $room->number }}')" class="btn-xtend font-bold">{{ $folio->isOpenTime() ? 'Convert Package' : 'Extend' }}</button>
-                                                @endif
                                                 <button onclick="openDiscountModal(this.dataset.folioId, this.dataset.roomNumber, this.dataset.roomType, this.dataset.rateTier, this.dataset.discountType, this.dataset.discountRef)" data-folio-id="{{ $folio->id }}" data-room-number="{{ $room->number }}" data-room-type="{{ $room->type }}" data-rate-tier="{{ $folio->rate_tier }}" data-discount-type="{{ $folio->discount_type ?? 'NONE' }}" data-discount-ref="{{ $folio->discount_id_ref ?? '' }}" class="btn-discount font-bold">Discount</button>
                                                 <button onclick="openTransferModal({{ $folio->id }}, '{{ $room->number }}')" class="btn-transfer font-bold">Transfer</button>
                                                 <button onclick="openAddOnModal({{ $folio->id }}, '{{ $room->number }}')" class="btn-addon font-bold">Add On</button>
