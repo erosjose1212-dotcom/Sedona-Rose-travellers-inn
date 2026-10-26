@@ -19,6 +19,7 @@
             <p class="text-slate-500">
                 Discrete RBAC roles: Owner (Full Access & Credentials), Admin (Rates & Finance), Cashier (Front Desk & POS), Kitchen (KDS TV), and Customer Display (Lobby Kiosk).
             </p>
+            @if($isOwner)<p class="mt-1 text-slate-600">Delete Account removes staff from this directory and blocks sign-in. Their past bills, payments and audit records stay available.</p>@endif
         </div>
 
         @if($isOwner)
@@ -118,12 +119,12 @@
                                             class="px-2 py-0.5 bg-slate-800 hover:bg-black text-white text-[10px] font-bold rounded shadow-sm">
                                             🔑 Reset Pass
                                         </button>
-                                        @if($user->id !== auth()->id() && $user->is_active)
-                                            <form method="POST" action="{{ route('admin.users.destroy', $user->id) }}" class="inline" onsubmit="return confirm('Deactivate this staff account? Transaction history will be preserved.')">
+                                        @if($user->id !== auth()->id())
+                                            <form method="POST" action="{{ route('admin.users.destroy', $user->id) }}" class="inline" onsubmit="return confirm('Delete this staff account? It will be removed from the directory and sign-in will be blocked. Past transactions will be preserved.')">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold rounded shadow-sm">
-                                                    Deactivate
+                                                    Delete Account
                                                 </button>
                                             </form>
                                         @elseif($user->id === auth()->id())

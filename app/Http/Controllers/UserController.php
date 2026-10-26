@@ -22,7 +22,7 @@ class UserController extends Controller
      */
     public function index(): View
     {
-        $users = User::with('roles')->orderBy('name')->get();
+        $users = User::whereNull('removed_at')->with('roles')->orderBy('name')->get();
         $roles = Role::whereIn('name', ['owner', 'admin', 'cashier', 'kitchen', 'customer_display'])->get();
         $isOwner = Auth::user()?->hasRole('owner') ?? false;
 
@@ -65,6 +65,7 @@ class UserController extends Controller
     public function resetPassword(Request $request, User $user): RedirectResponse
     {
         abort_unless(Auth::user()->hasRole('owner'), 403, 'Unauthorized. Password resets can only be performed by the Property Owner.');
+        abort_if($user->removed_at !== null, 404);
 
         $validated = $request->validate([
             'password' => 'required|string|min:6',
@@ -86,11 +87,11 @@ class UserController extends Controller
     }
 
     /**
-     * Delete / Deactivate staff account (strictly Owner ONLY).
+     * Remove staff access while retaining historical operator attribution.
      */
     public function destroy(Request $request, User $user): RedirectResponse
     {
-        abort_unless(Auth::user()->hasRole('owner'), 403, 'Unauthorized. Account deactivation can only be performed by the Property Owner.');
+        abort_unless(Auth::user()->hasRole('owner'), 403, 'Unauthorized. Accounts can only be deleted by the Property Owner.');
 
         if ($user->id === Auth::id()) {
             return back()->with('error', 'Security rule: You cannot delete your own active owner account.');
@@ -98,11 +99,19 @@ class UserController extends Controller
 
         $userName = $user->name;
         DB::transaction(function () use ($request, $user): void {
-            $user->forceFill(['is_active' => false, 'remember_token' => null])->save();
-            $this->audit->record($request, 'user.deactivated', $user, $this->auditMetadata($user));
+            $user = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            if ($user->removed_at !== null) {
+                return;
+            }
+            $user->forceFill(['is_active' => false, 'remember_token' => null, 'removed_at' => now()])->save();
+            if (config('session.driver') === 'database') {
+                DB::connection(config('session.connection'))->table(config('session.table', 'sessions'))
+                    ->where('user_id', $user->id)->delete();
+            }
+            $this->audit->record($request, 'user.deleted', $user, $this->auditMetadata($user) + ['removed_at' => $user->removed_at->toIso8601String()]);
         });
 
-        return back()->with('success', "Staff account for {$userName} has been deactivated. Transaction history has been retained.");
+        return back()->with('success', "Staff account for {$userName} has been deleted from the staff directory. Sign-in access is blocked; transaction history has been retained.");
     }
 
     /** @return array{name: string, email: string, roles: array<int, string>, is_active: bool} */

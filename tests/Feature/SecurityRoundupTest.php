@@ -98,7 +98,7 @@ class SecurityRoundupTest extends TestCase
         $this->delete(route('admin.users.destroy', $staff))->assertRedirect()->assertSessionHasNoErrors();
 
         $events = DB::table('audit_logs')->where('auditable_type', User::class)->where('auditable_id', $staff->id)->orderBy('id')->get();
-        $this->assertSame(['user.created', 'user.password_reset', 'user.deactivated'], $events->pluck('event')->all());
+        $this->assertSame(['user.created', 'user.password_reset', 'user.deleted'], $events->pluck('event')->all());
         $this->assertSame([$owner->id], $events->pluck('user_id')->unique()->all());
         $this->assertFalse($staff->fresh()->is_active);
         foreach ($events as $event) {

@@ -17,6 +17,7 @@ class ReportController extends Controller
         $today = $financials->period(now()->startOfDay(), now());
         $week = $financials->period($weekStart, now());
         $todayRevenue = $today['netRevenue'];
+        $todayCollections = round($today['cashCollections'] + $today['gcashCollections'], 2);
         $weekRevenue = $week['netRevenue'];
         $totalDiscountsGiven = $week['discounts'];
         $totalFoliosThisWeek = Folio::where('status', '!=', 'voided')->whereHas('room', fn ($query) => $query->where('is_staff_quarters', false))
@@ -28,7 +29,16 @@ class ReportController extends Controller
             'category' => ucwords(str_replace('_', ' ', $expense->category)),
             'description' => $expense->description, 'amount' => (float) $expense->amount,
         ]);
-        $totalOperatingExpenses = $week['totalExpenses'];
+        if ($week['providerFees'] != 0) {
+            $standardExpenses->push(['category' => 'Provider / Bank Fees', 'description' => 'Matched statement fees', 'amount' => $week['providerFees']]);
+        }
+        $totalOperatingExpenses = round($week['totalExpenses'] + $week['providerFees'], 2);
+        $weeklyDeductions = [
+            'Room discounts' => $week['discounts'],
+            'Approved write-offs' => $week['losses'],
+            'POS sales returns' => $week['salesReturns'],
+        ];
+        $weeklyInvoiceTax = $week['invoiceTax'];
         $grossWeeklyRevenue = $week['grossRevenue'];
         $netWeeklyOperatingProfit = $week['profit'];
         $recentFolios = Folio::with(['room', 'guest', 'cashier'])->latest('checked_in_at')->paginate(15);
@@ -38,7 +48,7 @@ class ReportController extends Controller
                 ->whereBetween('checked_in_at', [$weekStart, now()]);
         }])->orderByNumber()->get();
 
-        return view('reports.index', compact('todayRevenue', 'weekRevenue', 'totalDiscountsGiven',
+        return view('reports.index', compact('todayRevenue', 'todayCollections', 'weeklyDeductions', 'weeklyInvoiceTax', 'weekRevenue', 'totalDiscountsGiven',
             'totalFoliosThisWeek', 'roomRevenueWeek', 'overtimeRevenueWeek', 'posRevenueWeek',
             'standardExpenses', 'totalOperatingExpenses', 'grossWeeklyRevenue', 'netWeeklyOperatingProfit',
             'recentFolios', 'pastShifts', 'rooms'));

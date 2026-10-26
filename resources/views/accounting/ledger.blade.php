@@ -17,7 +17,7 @@
     <div class="bg-white p-3 border-l-4 border-[#421A2B] shadow-sm flex items-center justify-between">
         <div>
             <h1 class="font-bold text-slate-900 text-sm uppercase tracking-wide">Real-Time Financial Audit Ledger</h1>
-            <p class="text-xs text-slate-500">Double-entry audit feed tracking guest folio settlements, walk-in dining receipts, and petty cash expense disbursements.</p>
+            <p class="text-xs text-slate-500">Guest bills, walk-in sales and expenses. Bill balance is the saved amount due after deposit, before final payment; it is not collected money. See Daily Finance for cash and GCash collections.</p>
         </div>
         <div class="text-xs font-mono text-slate-600">
             Audit Mode: <strong class="text-emerald-700">Active Live Stream</strong>
@@ -42,7 +42,7 @@
                         <th>TIER</th>
                         <th>GROSS TOTAL</th>
                         <th>DISCOUNT</th>
-                        <th>NET COLLECTED</th>
+                        <th>BILL BALANCE</th>
                         <th>PAYMENT</th>
                         <th>PRINTABLES</th>
                     </tr>

@@ -15,21 +15,21 @@
     <!-- KPI Summary Row -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
         <div class="bg-white p-3.5 border-l-4 border-amber-600 shadow-sm">
-            <span class="font-bold text-slate-500 uppercase text-[10px] tracking-wider block">Today's Gross Collections</span>
-            <div class="text-xl font-mono font-black text-amber-700 mt-1">₱{{ number_format($todayRevenue, 2) }}</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">Active room settlements + Walk-in POS</div>
+            <span class="font-bold text-slate-500 uppercase text-[10px] tracking-wider block">Today's Net Cash & GCash Collections</span>
+            <div class="text-xl font-mono font-black text-amber-700 mt-1">₱{{ number_format($todayCollections, 2) }}</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Includes deposits; refunds deducted</div>
         </div>
 
         <div class="bg-white p-3.5 border-l-4 border-emerald-600 shadow-sm">
-            <span class="font-bold text-slate-500 uppercase text-[10px] tracking-wider block">7-Day Gross Revenue</span>
+            <span class="font-bold text-slate-500 uppercase text-[10px] tracking-wider block">7-Day Net Revenue</span>
             <div class="text-xl font-mono font-black text-emerald-700 mt-1">₱{{ number_format($weekRevenue, 2) }}</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">Combined lodging, overtime & dining</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">After discounts, write-offs and sales returns</div>
         </div>
 
         <div class="bg-white p-3.5 border-l-4 border-rose-600 shadow-sm">
-            <span class="font-bold text-slate-500 uppercase text-[10px] tracking-wider block">Senior / PWD Discounts</span>
+            <span class="font-bold text-slate-500 uppercase text-[10px] tracking-wider block">Room Discounts</span>
             <div class="text-xl font-mono font-black text-rose-700 mt-1">₱{{ number_format($totalDiscountsGiven, 2) }}</div>
-            <div class="text-[10px] text-slate-400 mt-0.5">20% Statutory deductions applied</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Saved DC, Senior / PWD and custom discounts</div>
         </div>
 
         <div class="bg-white p-3.5 border-l-4 border-blue-600 shadow-sm">
@@ -69,6 +69,20 @@
                     <div class="flex items-center justify-between p-2.5 bg-red-50 border border-red-200 mt-3">
                         <span class="font-bold text-[#421A2B] text-xs">TOTAL GROSS REVENUE:</span>
                         <span class="font-mono font-black text-[#421A2B] text-base">₱{{ number_format($grossWeeklyRevenue, 2) }}</span>
+                    </div>
+                    @foreach($weeklyDeductions as $label => $amount)
+                        <div class="flex items-center justify-between px-2 text-slate-700">
+                            <span>Less: {{ $label }}</span>
+                            <span class="font-mono">₱{{ number_format($amount, 2) }}</span>
+                        </div>
+                    @endforeach
+                    <div class="flex items-center justify-between p-2 font-bold text-emerald-800">
+                        <span>NET REVENUE:</span>
+                        <span class="font-mono">₱{{ number_format($weekRevenue, 2) }}</span>
+                    </div>
+                    <div class="flex items-center justify-between px-2 text-slate-700">
+                        <span>Recorded invoice tax (deducted from profit)</span>
+                        <span class="font-mono">₱{{ number_format($weeklyInvoiceTax, 2) }}</span>
                     </div>
                 </div>
             </div>
@@ -111,7 +125,7 @@
                 <div class="p-3 bg-emerald-50 border border-emerald-300 flex items-center justify-between">
                     <div>
                         <div class="text-xs font-bold uppercase text-emerald-900">Net Weekly Operating Profit</div>
-                        <div class="text-[10px] text-emerald-700">Gross Weekly Revenue minus Itemized Expenses</div>
+                        <div class="text-[10px] text-emerald-700">Net revenue less operating expenses and recorded invoice tax</div>
                     </div>
                     <div class="text-xl font-mono font-black text-emerald-800">
                         ₱{{ number_format($netWeeklyOperatingProfit, 2) }}

@@ -77,7 +77,8 @@ class ApprovalService
             $approval->update(['status' => $approve ? 'approved' : 'rejected', 'reviewed_by' => $request->user()->id, 'review_note' => $note, 'reviewed_at' => now()]);
             if ($approval->kind === 'expense_review' && $source->status === 'pending_review' && hash_equals($approval->source_hash, $this->fingerprint($source, $approval->kind, $approval->payload))) {
                 $this->days->assertWritable($source->expense_date->toDateString());
-                $source->update(['status' => $approve ? 'approved' : 'rejected_paid', 'approval_request_id' => $approval->id]);
+                $returned = Expense::where('reversal_of_id', $source->id)->exists();
+                $source->update(['status' => $approve || $returned ? 'approved' : 'rejected_paid', 'approval_request_id' => $approval->id]);
                 $approval->update(['status' => $approve ? 'executed' : 'rejected', 'executed_by' => $request->user()->id, 'executed_at' => now()]);
             }
             $this->audit->record($request, $approve ? 'approval.approved' : 'approval.rejected', $approval, ['note' => $note]);

@@ -343,7 +343,7 @@ class ManagementReportService
             $rows[] = ['at' => $folio->checked_out_at, 'values' => [$folio->receipt_number ?? $folio->transaction_id, $this->time($folio->checked_out_at), $folio->room?->number, $folio->room?->type,
                 $folio->isOpenTime() ? 'Open Time' : $folio->rate_tier, $folio->guest?->name, $folio->force_checkout ? 'WRITE-OFF' : $folio->payment_method, $folio->gcash_reference,
                 'Room '.number_format((float) $folio->room_charge, 2).'; Surcharges '.number_format((float) $folio->surcharge_total, 2).($items ? '; '.$items : ''),
-                (float) $folio->gross_total, null, $folio->force_checkout ? 0 : max(0, (float) $folio->gross_total - (float) $folio->discount_amount),
+                (float) $folio->gross_total, null, max(0, (float) $folio->gross_total - (float) $folio->discount_amount - ($folio->force_checkout && $folio->force_by !== null ? (float) $folio->net_total : 0)),
                 $folio->discount_type, (float) $folio->discount_amount, $folio->discount_id_ref, $folio->checkedOutBy?->name ?? $folio->cashier?->name]];
         }
         foreach ($orders as $order) {
@@ -352,7 +352,7 @@ class ManagementReportService
                 (float) $order->total, null, (float) $order->total, null, 0, null, $order->cashier?->name]];
         }
 
-        return $this->sheet('Guest Bills & POS Sales', ['Receipt No.', 'Date & Time', 'Room No.', 'Room Type', 'Declared Stay', 'Guest Name', 'Payment Method', 'GCash Ref #', 'Itemized Orders', 'Subtotal', 'Service Charge (not recorded)', 'Sale after discount', 'Discount Type', 'Discount', 'Discount Ref', 'Cashier'], collect($rows)->sortBy('at')->pluck('values')->values()->all(), [9, 11, 13]);
+        return $this->sheet('Guest Bills & POS Sales', ['Receipt No.', 'Date & Time', 'Room No.', 'Room Type', 'Declared Stay', 'Guest Name', 'Payment Method', 'GCash Ref #', 'Itemized Orders', 'Subtotal', 'Service Charge (not recorded)', 'Sale after discount / write-off', 'Discount Type', 'Discount', 'Discount Ref', 'Cashier'], collect($rows)->sortBy('at')->pluck('values')->values()->all(), [9, 11, 13]);
     }
 
     /** @return Collection<int, array<string, mixed>> */

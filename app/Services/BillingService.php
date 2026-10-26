@@ -38,6 +38,7 @@ class BillingService
             $posCents += $amount;
             $addOnItems[] = ['name' => $item['name'] ?? 'Item', 'qty' => $item['qty'] ?? 1, 'price' => (float) ($item['price'] ?? 0), 'amount' => $amount / 100];
         }
+        $posItems = $addOnItems;
         foreach (['extra_persons' => ['Extra Person', 'extra_person_rate', 150], 'extra_bedding' => ['Extra Bedding', 'extra_bedding_rate', 100], 'extra_towels' => ['Extra Towel', 'extra_towel_rate', 100]] as $field => [$name, $key, $fallback]) {
             $qty = (int) $folio->{$field};
             $price = self::cents(config('sedona.'.$key, $fallback));
@@ -47,6 +48,16 @@ class BillingService
             }
         }
         $hoursCents = ($xtendHours + $excessHours) * 13000;
+        if ($settled) {
+            $savedExtraCents = max(0, self::cents($folio->surcharge_total) - $hoursCents);
+            if ($savedExtraCents !== $extraCents) {
+                $extraCents = $savedExtraCents;
+                $addOnItems = $posItems;
+                if ($extraCents > 0) {
+                    $addOnItems[] = ['name' => 'Saved stay extras', 'qty' => 1, 'price' => $extraCents / 100, 'amount' => $extraCents / 100];
+                }
+            }
+        }
         $surchargeCents = $extraCents + $hoursCents;
         $grossCents = $roomCents + $surchargeCents + $posCents;
         $discountType = DiscountService::normalizeDiscountType($folio->discount_type);

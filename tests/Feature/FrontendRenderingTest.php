@@ -147,7 +147,7 @@ class FrontendRenderingTest extends TestCase
         $this->assertStringNotContainsString($name, $button->getAttribute('onclick'));
         $this->assertSame(0, $xpath->query('//img[@onerror]')->length);
         $this->assertSame(0, $xpath->query('//input[@name="password" and @value]')->length);
-        $this->assertSame(0, $xpath->query('//form[@action="'.route('admin.users.destroy', $staff).'"]')->length);
+        $this->assertSame(1, $xpath->query('//form[@action="'.route('admin.users.destroy', $staff).'"]')->length);
     }
 
     public function test_booking_checkin_control_submits_the_reservation_and_escapes_guest_contact(): void

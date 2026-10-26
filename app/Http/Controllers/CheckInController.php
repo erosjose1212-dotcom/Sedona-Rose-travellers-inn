@@ -371,7 +371,7 @@ class CheckInController extends Controller
             $snapshot = null;
             if ($document === 'billing') {
                 abort_if($locked->status === 'voided', 409, 'Cancelled stays cannot issue billing statements.');
-                $snapshot = $this->billingSnapshot($this->viewData($locked, $request));
+                $snapshot = $this->billingSnapshot($this->viewData($locked, $request, useCurrentTime: true));
                 if ($locked->billing_printed_at === null) {
                     $locked->billing_printed_at = now();
                     $locked->save();
@@ -573,7 +573,7 @@ class CheckInController extends Controller
         $this->posting->post($request, $folio, $kind, BillingService::cents($cash), BillingService::cents($gcash), $folio->gcash_reference);
     }
 
-    private function viewData(Folio $folio, ?Request $request = null): array
+    private function viewData(Folio $folio, ?Request $request = null, bool $useCurrentTime = false): array
     {
         $folio->load(['room', 'guest', 'orders.items', 'cashier', 'checkedOutBy']);
         $preview = clone $folio;
@@ -593,7 +593,7 @@ class CheckInController extends Controller
                 $preview->deposit_status = $request->boolean('apply_deposit') ? 'applied_to_bill' : 'not_applied';
             }
             $preview->expected_checkout_at = $preview->room->getCheckoutForTier($preview->rate_tier, $preview->checked_in_at, (int) $preview->extra_hours);
-            $at = isset($data['checked_out_at']) ? Carbon::parse($data['checked_out_at']) : null;
+            $at = ! $useCurrentTime && isset($data['checked_out_at']) ? Carbon::parse($data['checked_out_at']) : null;
         }
         $bill = app(BillingService::class)->calculate($preview, $at);
         $preview->discount_type = $bill['discountType'];
