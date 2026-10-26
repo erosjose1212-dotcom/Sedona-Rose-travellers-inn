@@ -43,6 +43,7 @@ class ManagementReportService
         $today = $calendar ? CarbonImmutable::now($timezone)->startOfDay() : ($financeDay ? CarbonImmutable::parse(app(BusinessDayService::class)->date(), 'Asia/Manila') : $this->shifts->period()['day']);
         $range = $filters['range'] ?? 'today';
         [$first, $last] = match ($range) {
+            'yesterday' => [$today->subDay(), $today->subDay()],
             'this_week' => [$today->startOfWeek(), $today->endOfWeek()],
             'this_month' => [$today->startOfMonth(), $today->endOfMonth()],
             'last_month' => [$today->subMonthNoOverflow()->startOfMonth(), $today->subMonthNoOverflow()->endOfMonth()],

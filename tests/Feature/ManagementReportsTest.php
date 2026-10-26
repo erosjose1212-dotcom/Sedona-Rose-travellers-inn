@@ -261,6 +261,8 @@ class ManagementReportsTest extends TestCase
         $this->get(route('admin.accounting.reports', ['report' => 'shift_forms', 'report_date' => '2026-10-26']))->assertOk()->assertSee('00092');
     }
 
+    #[TestWith(['today', '2026-10-28', '2026-10-28'])]
+    #[TestWith(['yesterday', '2026-10-27', '2026-10-27'])]
     #[TestWith(['this_week', '2026-10-26', '2026-11-01'])]
     #[TestWith(['this_month', '2026-10-01', '2026-10-31'])]
     #[TestWith(['last_month', '2026-09-01', '2026-09-30'])]
@@ -269,6 +271,46 @@ class ManagementReportsTest extends TestCase
         $response = $this->actingAs($this->actor('admin'))->get(route('admin.accounting.reports', ['report' => 'ledger', 'range' => $range]))->assertOk();
         $this->assertSame($first, $response->viewData('period')['start_date']);
         $this->assertSame($last, $response->viewData('period')['end_date']);
+    }
+
+    #[TestWith(['Asia/Manila'])]
+    #[TestWith(['UTC'])]
+    public function test_yesterday_before_six_thirty_exports_the_previous_hotel_day(string $timezone): void
+    {
+        config(['app.timezone' => $timezone]);
+        $this->travelTo(CarbonImmutable::parse('2026-10-28 06:29:59', 'Asia/Manila'));
+        $actor = $this->actor('owner');
+        $included = $this->stay($actor, '2026-10-27 03:00', '2026-10-27 06:29:59');
+        $excluded = $this->stay($actor, '2026-10-27 03:01', '2026-10-27 06:30:00');
+        $params = ['report' => 'ledger', 'range' => 'yesterday'];
+
+        $preview = $this->actingAs($actor)->get(route('admin.accounting.reports', $params));
+
+        $preview->assertSee($included->receipt_number)->assertDontSee($excluded->receipt_number)
+            ->assertViewHas('selectedRange', 'yesterday');
+        $this->assertSame('2026-10-26', $preview->viewData('period')['start_date']);
+        $download = $this->get(route('admin.accounting.reports', $params + ['format' => 'xlsx']));
+        $download->assertDownload('Sedona_'.(str_contains(strtolower(config('sedona.hotel_name')), 'rose') ? 'Rose' : 'Court').'_Guest_Bills_POS_Sales_2026-10-26_to_2026-10-26_all.xlsx');
+        $file = tempnam(sys_get_temp_dir(), 'sedona-yesterday-');
+        try {
+            file_put_contents($file, $download->streamedContent());
+            $book = IOFactory::load($file);
+            $receipts = array_column($book->getSheet(0)->toArray(), 0);
+            $this->assertContains($included->receipt_number, $receipts);
+            $this->assertNotContains($excluded->receipt_number, $receipts);
+            $book->disconnectWorksheets();
+        } finally {
+            unlink($file);
+        }
+    }
+
+    public function test_historical_links_keep_their_dates_without_being_labelled_today(): void
+    {
+        $response = $this->actingAs($this->actor('admin'))->get(route('admin.accounting.reports', ['report' => 'ledger', 'report_date' => '2026-10-20']));
+
+        $response->assertViewHas('selectedRange', 'custom');
+        $this->assertSame('2026-10-20', $response->viewData('period')['start_date']);
+        $this->assertSame(['label' => 'Today', 'start' => '2026-10-28', 'end' => '2026-10-28'], $response->viewData('rangePresets')['today']);
     }
 
     public function test_full_year_date_range_is_supported_without_truncating_to_a_month(): void

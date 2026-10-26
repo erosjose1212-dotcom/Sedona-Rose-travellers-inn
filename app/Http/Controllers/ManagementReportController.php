@@ -20,7 +20,7 @@ class ManagementReportController extends Controller
     {
         $filters = $request->validate([
             'report' => ['nullable', Rule::in(array_keys(ManagementReportService::REPORTS))],
-            'range' => 'nullable|in:today,this_week,this_month,last_month,custom',
+            'range' => 'nullable|in:today,yesterday,this_week,this_month,last_month,custom',
             'report_date' => 'nullable|date_format:Y-m-d',
             'start_date' => 'required_if:range,custom|nullable|date_format:Y-m-d',
             'end_date' => 'required_if:range,custom|nullable|date_format:Y-m-d|after_or_equal:start_date',
@@ -56,6 +56,17 @@ class ManagementReportController extends Controller
             }, $filename, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Cache-Control' => 'private, no-store']);
         }
 
-        return view('accounting.reports', ['report' => $report, 'period' => $period, 'types' => ManagementReportService::REPORTS]);
+        $rangePresets = [];
+        foreach (['today' => 'Today', 'yesterday' => 'Yesterday', 'this_week' => 'This week', 'this_month' => 'This month', 'last_month' => 'Last month'] as $key => $label) {
+            $preset = $this->reports->period(['range' => $key, 'calendar' => $period['calendar'], 'finance_day' => $period['finance_day']]);
+            $rangePresets[$key] = ['label' => $label, 'start' => $preset['start_date'], 'end' => $preset['end_date']];
+        }
+        $selectedRange = $period['range'];
+        if (! isset($rangePresets[$selectedRange]) || $rangePresets[$selectedRange]['start'] !== $period['start_date'] || $rangePresets[$selectedRange]['end'] !== $period['end_date']) {
+            $selectedRange = 'custom';
+        }
+
+        return view('accounting.reports', ['report' => $report, 'period' => $period, 'types' => ManagementReportService::REPORTS,
+            'descriptions' => ManagementReportService::DESCRIPTIONS, 'rangePresets' => $rangePresets, 'selectedRange' => $selectedRange]);
     }
 }
