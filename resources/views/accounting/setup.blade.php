@@ -3,7 +3,7 @@
 @section('subtitle', 'Owner configuration · accountant-approved policy and mappings')
 @section('content')
 <div class="hms-card max-w-5xl">
-    <p class="text-sm text-slate-600 mb-5">Business-day cutoff: 6:00 AM, Asia/Manila. Invoice and CSV export activation require approved configuration. Tax extraction does not add to guest prices. External API synchronization is not connected.</p>
+    <p class="text-sm text-slate-600 mb-5">Business-day cutoff: 6:30 AM, Asia/Manila. Invoice and CSV export activation require approved configuration. Tax extraction does not add to guest prices. External API synchronization is not connected.</p>
     <form method="POST" action="{{ route('admin.finance.setup.update') }}" class="grid gap-5">@csrf
         <fieldset @disabled(!auth()->user()->can('manage-accounting-setup')) class="grid gap-4 sm:grid-cols-2">
         @foreach(['legal_name' => 'Registered legal name', 'address' => 'Registered address', 'tin' => 'Tax identification number', 'registration' => 'Registration details', 'approval_reference' => 'Accountant approval reference', 'invoice_series' => 'Approved invoice series', 'opening_balance_reference' => 'Opening balance reconciliation reference', 'destination' => 'Accounting CSV destination'] as $key => $label)<label>{{ $label }}<input name="{{ $key }}" value="{{ old($key, $settings[$key] ?? '') }}" maxlength="{{ $key === 'address' ? 500 : ($key === 'invoice_series' ? 50 : ($key === 'destination' ? 100 : 255)) }}" class="form-control-hms"></label>@endforeach

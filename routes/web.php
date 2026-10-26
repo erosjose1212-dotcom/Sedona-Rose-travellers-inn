@@ -14,6 +14,7 @@ use App\Http\Controllers\FinanceControlController;
 use App\Http\Controllers\GuestOrderController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\LoginHistoryController;
+use App\Http\Controllers\ManagementReportController;
 use App\Http\Controllers\PosController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RoomController;
@@ -173,6 +174,7 @@ Route::middleware(['auth', 'auth.session', 'active_account'])->group(function ()
 
         // Executive Accounting & Financials
         Route::prefix('accounting')->name('accounting.')->group(function () {
+            Route::get('/reports', [ManagementReportController::class, 'index'])->name('reports');
             Route::get('/pnl', [AccountingController::class, 'pnl'])->name('pnl');
             Route::get('/pnl/export-csv', [AccountingController::class, 'exportCsv'])->name('pnl.csv');
             Route::get('/expenses', [AccountingController::class, 'expensesIndex'])->name('expenses');

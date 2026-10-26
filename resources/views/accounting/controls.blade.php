@@ -1,6 +1,9 @@
 @extends('layouts.app')
 @section('title', 'Daily Finance & Reconciliation')
-@section('subtitle', '6:00 AM cutoff · Asia/Manila · versioned day closing')
+@section('subtitle', '6:30 AM cutoff · Asia/Manila · versioned day closing')
+@section('top_action')
+    <a href="{{ route('admin.accounting.reports', ['report' => 'financial_audit', 'range' => 'today', 'report_date' => $date, 'finance_day' => 1]) }}" class="inline-flex items-center justify-center rounded bg-brand px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Daily Excel reports</a>
+@endsection
 @section('content')
 <div class="space-y-5">
     <div class="hms-card flex flex-wrap gap-4 items-end justify-between"><form method="GET"><label>Business date<input name="date" value="{{ $date }}" type="date" class="form-control-hms"></label><button class="btn-hms-primary mt-2">Review day</button></form><div class="flex gap-4"><a href="{{ route('approvals.index') }}">Approvals</a><a href="{{ route('transactions.index') }}">Payment journal</a><a href="{{ route('admin.finance.setup') }}">Accounting setup</a></div></div>

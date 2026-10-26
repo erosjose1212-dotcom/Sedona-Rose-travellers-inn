@@ -66,8 +66,9 @@ class Shift extends Model
      */
     public static function typeForTime(Carbon $time): string
     {
-        $hour = (int) $time->format('G');
+        $local = $time->copy()->setTimezone('Asia/Manila');
+        $minutes = (int) $local->format('G') * 60 + (int) $local->format('i');
 
-        return ($hour >= 6 && $hour < 18) ? 'day' : 'night';
+        return ($minutes >= 390 && $minutes < 1110) ? 'day' : 'night';
     }
 }

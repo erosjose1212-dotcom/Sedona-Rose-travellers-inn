@@ -4,6 +4,7 @@
 @section('subtitle', 'Accounting & Financial Hub | Cashier Float Reconciliations & Drawer Discrepancy Audits')
 
 @section('top_action')
+    <a href="{{ route('admin.accounting.reports', ['report' => 'shift_forms']) }}" class="inline-flex items-center justify-center rounded bg-brand px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Shift forms / Excel</a>
     <a href="{{ route('shifts.index') }}" class="bg-[#0284c7] hover:bg-[#0369a1] text-white text-[11px] font-bold px-3 py-1 rounded shadow-sm">
         Go to Cashier Shift Terminal &rarr;
     </a>
@@ -16,7 +17,7 @@
     <div class="bg-white p-3 border-l-4 border-[#421A2B] shadow-sm flex items-center justify-between">
         <div>
             <h1 class="font-bold text-slate-900 text-sm uppercase tracking-wide">Cashier Drawer Blind Audits & Shift Reconciliations</h1>
-            <p class="text-xs text-slate-500">Comprehensive drawer count logs for Day Shift (06:00 AM – 06:00 PM) and Night Shift (06:00 PM – 06:00 AM).</p>
+            <p class="text-xs text-slate-500">Saved drawer count logs. Reporting shifts run 6:30 AM–6:30 PM and 6:30 PM–6:30 AM.</p>
         </div>
         <div class="text-xs font-mono text-slate-600">
             Total Shift Logs: <strong class="text-[#421A2B]">{{ $shifts->total() }}</strong>

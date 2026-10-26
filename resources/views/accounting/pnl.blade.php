@@ -5,6 +5,7 @@
 
 @section('top_action')
     <div class="flex items-center space-x-2">
+        <a href="{{ route('admin.accounting.reports', ['report' => 'financial_audit', 'range' => $range, 'calendar' => $range !== 'today' ? 1 : 0, 'start_date' => request('start_date'), 'end_date' => request('end_date'), 'shift' => $range === 'today' ? $shift : 'all', 'report_date' => $reportDate, 'format' => 'xlsx']) }}" class="inline-flex items-center justify-center rounded bg-brand px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Export Excel Audit</a>
         <a href="{{ route('admin.accounting.pnl.csv', ['range' => $range, 'start_date' => request('start_date'), 'end_date' => request('end_date')] + ($range === 'today' ? ['shift' => $shift, 'report_date' => $reportDate] : [])) }}" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] px-3 py-1 rounded shadow-sm">
             ⤓ Export CSV Report
         </a>

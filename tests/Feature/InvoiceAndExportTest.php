@@ -225,7 +225,7 @@ class InvoiceAndExportTest extends TestCase
 
     public function test_finance_and_setup_pages_render_for_reviewer_and_owner(): void
     {
-        $this->actingAs($this->admin)->get(route('admin.finance.index'))->assertOk()->assertSee('6:00 AM');
+        $this->actingAs($this->admin)->get(route('admin.finance.index'))->assertOk()->assertSee('6:30 AM');
         $this->get(route('admin.finance.setup'))->assertOk()->assertSee('Accounting Setup');
         $this->get(route('approvals.index'))->assertOk()->assertSee('Property review queue');
         $this->actingAs($this->owner)->get(route('admin.finance.setup'))->assertOk();

@@ -57,6 +57,7 @@
             $navigation = array_merge($navigation, $lobbyNavigation);
         }
         $financeNavigation = [
+            ['label' => 'Report Exports', 'route' => 'admin.accounting.reports', 'patterns' => ['admin.accounting.reports'], 'icon' => 'M5 3h14v18H5z M8 7h8 M8 11h8 M8 15h5'],
             ['label' => 'Ledger', 'route' => 'admin.accounting.ledger', 'patterns' => ['admin.accounting.ledger'], 'icon' => 'M5 3h14v18H5z M8 7h8 M8 11h8 M8 15h5'],
             ['label' => 'Daily Finance', 'route' => 'admin.finance.index', 'patterns' => ['admin.finance.*'], 'icon' => 'M3 5h18v15H3z M7 3v4 M17 3v4 M7 12h10'],
             ['label' => 'Executive P&L', 'route' => 'admin.accounting.pnl', 'patterns' => ['admin.accounting.pnl*'], 'icon' => 'M4 20V4 M4 20h16 M8 16v-5 M13 16V7 M18 16V3'],

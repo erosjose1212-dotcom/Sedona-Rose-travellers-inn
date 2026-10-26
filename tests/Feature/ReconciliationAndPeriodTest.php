@@ -46,10 +46,10 @@ class ReconciliationAndPeriodTest extends TestCase
     public function test_cutoff_assigns_early_morning_to_previous_business_day(): void
     {
         $days = app(BusinessDayService::class);
-        $this->assertSame('2026-10-07', $days->date(Carbon::parse('2026-10-08 05:59:59', 'Asia/Manila')));
-        $this->assertSame('2026-10-08', $days->date(Carbon::parse('2026-10-08 06:00:00', 'Asia/Manila')));
+        $this->assertSame('2026-10-07', $days->date(Carbon::parse('2026-10-08 06:29:59', 'Asia/Manila')));
+        $this->assertSame('2026-10-08', $days->date(Carbon::parse('2026-10-08 06:30:00', 'Asia/Manila')));
         [$start, $end] = $days->bounds('2026-10-08');
-        $this->assertSame('06:00:00', $start->format('H:i:s'));
+        $this->assertSame('06:30:00', $start->setTimezone('Asia/Manila')->format('H:i:s'));
         $this->assertSame('2026-10-09', $end->toDateString());
     }
 
