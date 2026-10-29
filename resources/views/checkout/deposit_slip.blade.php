@@ -140,7 +140,7 @@
         </div>
         <div class="row">
             <span>Payment Method:</span>
-            <span class="font-bold">{{ strtoupper($folio->deposit_payment_method ?? 'CASH') }}</span>
+            <span class="font-bold">{{ ($depositPaymentMethod ?? '') === 'split' ? 'CASH + GCASH' : strtoupper($depositPaymentMethod ?? $folio->deposit_payment_method ?? 'cash') }}</span>
         </div>
         <div class="row">
             <span>Trust Status:</span>
@@ -148,6 +148,8 @@
         </div>
 
         <div class="double-divider"></div>
+
+        @include('checkout.deposit_payments', ['depositPayments' => $depositPayments ?? []])
 
         <!-- Amount Box -->
         <div style="text-align: center; padding: 8px 0;">

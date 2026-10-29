@@ -91,4 +91,55 @@ class BillingService
             'attributes' => ['surcharge_total' => $surchargeCents / 100, 'pos_total' => $posCents / 100, 'gross_total' => $grossCents / 100, 'discount_amount' => $discountCents / 100, 'net_total' => $netCents / 100, 'overtime_hours' => $excessHours],
         ];
     }
+
+    /**
+     * @return array{depositPayments: list<array{amount: float, method: string, reference: ?string}>, depositPaymentMethod: string, receiptPaymentMethod: string}
+     */
+    public function paymentDetails(Folio $folio, float $depositApplied = 0): array
+    {
+        $folio->loadMissing('paymentEntries');
+        $deposits = [];
+        foreach ($folio->paymentEntries->where('kind', 'deposit')->sortBy('id') as $entry) {
+            $cash = max(0, self::cents($entry->cash_amount));
+            $gcash = max(0, self::cents($entry->gcash_amount));
+            if ($cash + $gcash > 0) {
+                $deposits[] = ['cash' => $cash, 'gcash' => $gcash, 'reference' => $gcash > 0 ? $entry->gcash_reference : null];
+            }
+        }
+        $recorded = array_sum(array_column($deposits, 'cash')) + array_sum(array_column($deposits, 'gcash'));
+        $legacy = max(0, self::cents($folio->security_deposit) - $recorded);
+        if ($legacy > 0) {
+            array_unshift($deposits, ['cash' => $folio->deposit_payment_method === 'gcash' ? 0 : $legacy,
+                'gcash' => $folio->deposit_payment_method === 'gcash' ? $legacy : 0, 'reference' => null]);
+        }
+
+        $appliedLeft = self::cents($depositApplied);
+        $appliedCash = 0;
+        $appliedGcash = 0;
+        $rows = [];
+        foreach ($deposits as $deposit) {
+            $amount = $deposit['cash'] + $deposit['gcash'];
+            $used = min($appliedLeft, $amount);
+            $cashUsed = min($used, $deposit['cash']);
+            $appliedCash += $cashUsed;
+            $appliedGcash += $used - $cashUsed;
+            $appliedLeft -= $used;
+            $rows[] = ['amount' => $amount / 100, 'method' => $this->paymentMethod($deposit['cash'], $deposit['gcash']), 'reference' => $deposit['reference']];
+        }
+        $cash = $folio->payment_method === 'gcash' ? 0 : max(0, self::cents($folio->cash_tendered) - self::cents($folio->change_due));
+        $gcash = $folio->payment_method === 'cash' ? 0 : self::cents($folio->gcash_amount);
+
+        return ['depositPayments' => $rows,
+            'depositPaymentMethod' => $this->paymentMethod(array_sum(array_column($deposits, 'cash')), array_sum(array_column($deposits, 'gcash'))),
+            'receiptPaymentMethod' => $this->paymentMethod($cash + $appliedCash, $gcash + $appliedGcash, $folio->payment_method ?? 'cash')];
+    }
+
+    private function paymentMethod(int $cash, int $gcash, string $fallback = 'cash'): string
+    {
+        if ($cash + $gcash === 0) {
+            return $fallback;
+        }
+
+        return $gcash > 0 ? ($cash > 0 ? 'split' : 'gcash') : 'cash';
+    }
 }

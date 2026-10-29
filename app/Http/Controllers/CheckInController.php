@@ -444,7 +444,8 @@ class CheckInController extends Controller
     {
         $folio->load(['room', 'guest', 'cashier']);
 
-        return view('checkout.deposit_slip', ['folio' => $folio, 'depositAmount' => (float) $folio->security_deposit]);
+        return view('checkout.deposit_slip', ['folio' => $folio, 'depositAmount' => (float) $folio->security_deposit]
+            + app(BillingService::class)->paymentDetails($folio));
     }
 
     public function showLossSlip(Folio $folio): View
@@ -605,7 +606,7 @@ class CheckInController extends Controller
             $preview->change_due = $change;
         }
 
-        return $bill + [
+        return $bill + app(BillingService::class)->paymentDetails($preview, $bill['depositApplied']) + [
             'folio' => $preview, 'room' => $preview->room, 'guest' => $preview->guest,
             'discountOptions' => DiscountService::getOptionsForFolio($preview),
             'paymentMethod' => $preview->payment_method, 'cashTendered' => (float) $preview->cash_tendered,

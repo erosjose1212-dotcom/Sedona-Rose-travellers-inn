@@ -289,9 +289,9 @@
             <span class="font-bold">
                 @if($folio->force_by)
                     APPROVED WRITE-OFF
-                @elseif(($folio->payment_method ?? '') === 'split')
+                @elseif(($receiptPaymentMethod ?? $folio->payment_method ?? '') === 'split')
                     SPLIT (CASH + GCASH)
-                @elseif(($folio->payment_method ?? '') === 'gcash')
+                @elseif(($receiptPaymentMethod ?? $folio->payment_method ?? '') === 'gcash')
                     GCASH E-WALLET
                 @else
                     CASH PAYMENT
@@ -299,7 +299,14 @@
             </span>
         </div>
 
-        @if(($folio->payment_method ?? '') === 'split')
+        @include('checkout.deposit_payments', ['depositPayments' => $depositPayments ?? []])
+
+        @if(($depositApplied ?? 0) > 0 && ($finalBalanceToPay ?? $folio->net_total) > 0)
+            <div class="row font-bold"><span>Additional checkout payment:</span></div>
+        @endif
+        @if(!$folio->force_by && ($depositApplied ?? 0) > 0 && ($finalBalanceToPay ?? $folio->net_total) <= 0)
+            <div class="row"><span>Paid in full by deposit.</span></div>
+        @elseif(($folio->payment_method ?? '') === 'split')
             <div class="row">
                 <span>Cash Tendered:</span>
                 <span>₱{{ number_format($folio->cash_tendered, 2) }}</span>

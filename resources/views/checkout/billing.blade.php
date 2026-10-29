@@ -328,13 +328,14 @@
         <div class="double-divider"></div>
 
         <!-- Cashier Settlement & Payment Details -->
+        @include('checkout.deposit_payments', ['depositPayments' => $depositPayments ?? []])
         @if(($paymentMethod && $paymentMethod !== 'cash') || $cashTendered > 0 || $gcashAmount > 0 || !empty($gcashRef) || ($folio->status === 'checked_out') || request()->has('payment_method'))
             <div class="row">
                 <span>Payment Method:</span>
                 <span class="font-bold">
-                    @if($paymentMethod === 'split')
+                    @if(($receiptPaymentMethod ?? $paymentMethod) === 'split')
                         SPLIT (CASH + GCASH)
-                    @elseif($paymentMethod === 'gcash')
+                    @elseif(($receiptPaymentMethod ?? $paymentMethod) === 'gcash')
                         GCASH E-WALLET
                     @else
                         CASH PAYMENT
@@ -342,7 +343,12 @@
                 </span>
             </div>
 
-            @if($paymentMethod === 'split')
+            @if($depositApplied > 0 && $finalBalanceToPay > 0)
+                <div class="row font-bold"><span>Additional checkout payment:</span></div>
+            @endif
+            @if(!$folio->force_by && $depositApplied > 0 && $finalBalanceToPay <= 0)
+                <div class="row"><span>Paid in full by deposit.</span></div>
+            @elseif($paymentMethod === 'split')
                 <div class="row">
                     <span>Cash Tendered:</span>
                     <span>₱{{ number_format($cashTendered, 2) }}</span>
