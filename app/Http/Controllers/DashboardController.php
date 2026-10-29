@@ -10,10 +10,15 @@ use App\Models\PaymentEntry;
 use App\Models\PosItem;
 use App\Models\Room;
 use App\Models\Shift;
+use App\Models\User;
 use App\Services\DiscountService;
 use App\Services\ShiftReportService;
 use App\Services\StayRateService;
+use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -33,9 +38,11 @@ class DashboardController extends Controller
         $selectedStatus = $request->query('status', 'all');
 
         $shiftActivity = null;
+        $signedInCashiers = null;
         if ($request->user()->hasAnyRole(['admin', 'owner'])) {
             $shiftFilters = $request->validate(['shift_date' => 'nullable|date_format:Y-m-d']);
             $shiftActivity = app(ShiftReportService::class)->activity($shiftFilters['shift_date'] ?? null);
+            $signedInCashiers = $this->signedInCashiers();
         }
 
         $query = Room::with(['activeFolio.guest', 'activeFolio.orders.items']);
@@ -228,6 +235,7 @@ class DashboardController extends Controller
         return view($boardView ? 'dashboard.board' : 'dashboard.index', compact(
             'rooms',
             'shiftActivity',
+            'signedInCashiers',
             'folioDiscountOptions',
             'folioExtensionOptions',
             'totalRooms',
@@ -257,6 +265,31 @@ class DashboardController extends Controller
             'notifCount',
             'notifItems'
         ));
+    }
+
+    /** @return Collection<int, array{name: string, last_active_at: CarbonImmutable}>|null */
+    private function signedInCashiers(): ?Collection
+    {
+        if (config('session.driver') !== 'database') {
+            return null;
+        }
+
+        $lastActivity = DB::connection(config('session.connection'))
+            ->table(config('session.table', 'sessions'))
+            ->whereNotNull('user_id')
+            ->where('last_activity', '>=', now()->subMinutes((int) config('session.lifetime', 120))->timestamp)
+            ->selectRaw('user_id, MAX(last_activity) as last_activity')
+            ->groupBy('user_id')->pluck('last_activity', 'user_id');
+
+        return User::query()->select(['id', 'name'])
+            ->where('is_active', true)->whereNull('removed_at')
+            ->whereIn('id', $lastActivity->keys())
+            ->whereHas('roles', fn (Builder $query) => $query->whereIn('name', ['cashier', 'front_desk']))
+            ->orderBy('name')->get()
+            ->map(fn (User $user): array => [
+                'name' => $user->name,
+                'last_active_at' => CarbonImmutable::createFromTimestamp((int) $lastActivity[$user->id], 'Asia/Manila'),
+            ]);
     }
 
     /**

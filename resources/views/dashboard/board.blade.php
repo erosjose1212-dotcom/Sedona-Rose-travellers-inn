@@ -14,6 +14,24 @@
             <section class="bg-white rounded-xl border border-[#e8e2d6] shadow-sm p-4" aria-label="Check-ins and checkouts by shift">
                 <h2 class="font-black text-[13px] tracking-wide text-[#421A2B] uppercase">Check-ins &amp; Checkouts</h2>
                 <p class="text-xs text-slate-500 mt-1">By shift · Manila time · starting {{ $shiftActivity['date'] }}</p>
+                <div class="mt-3 rounded-lg border border-emerald-100 bg-emerald-50 p-3" aria-label="Currently signed-in cashiers">
+                    <h3 class="text-xs font-bold text-[#421A2B]">Cashiers signed in now</h3>
+                    @if($signedInCashiers === null)
+                        <p class="text-xs text-slate-600 mt-2">Cashier session status unavailable.</p>
+                    @else
+                        <ul class="space-y-2 mt-2">
+                            @forelse($signedInCashiers as $cashier)
+                                <li class="text-xs">
+                                    <span class="flex items-center gap-2 font-semibold text-emerald-900"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" aria-hidden="true"></span>{{ $cashier['name'] }}</span>
+                                    <span class="block text-[10px] text-slate-600 mt-1">Last activity: <time datetime="{{ $cashier['last_active_at']->toIso8601String() }}">{{ $cashier['last_active_at']->format('M j, g:i A') }}</time></span>
+                                </li>
+                            @empty
+                                <li class="text-xs text-slate-600">No cashier signed in.</li>
+                            @endforelse
+                        </ul>
+                        <p class="text-[10px] text-slate-500 mt-2">Updates on refresh. Closed browsers may remain listed until their session expires.</p>
+                    @endif
+                </div>
                 <form method="GET" action="{{ route('dashboard') }}" class="flex flex-wrap items-end gap-2 mt-3">
                     <label class="text-xs text-slate-600">Shift start date
                         <input type="date" name="shift_date" value="{{ $shiftActivity['date'] }}" required class="form-control-hms block w-full">
