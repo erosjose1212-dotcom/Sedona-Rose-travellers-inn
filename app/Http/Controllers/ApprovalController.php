@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class ApprovalController extends Controller
 {
@@ -92,7 +93,15 @@ class ApprovalController extends Controller
     public function review(Request $request, ApprovalRequest $approval): RedirectResponse
     {
         $data = $request->validate(['decision' => 'required|in:approve,reject', 'note' => 'required|string|max:1000']);
-        $this->approvals->review($request, $approval, $data['decision'] === 'approve', $data['note']);
+        try {
+            $this->approvals->review($request, $approval, $data['decision'] === 'approve', $data['note']);
+        } catch (HttpException $exception) {
+            if ($exception->getStatusCode() !== 409) {
+                throw $exception;
+            }
+
+            return back()->withErrors(['approval' => $exception->getMessage().' Refresh this request; reject or cancel an outdated request instead.']);
+        }
 
         $approved = $approval->fresh()->status === 'approved';
 
@@ -103,7 +112,15 @@ class ApprovalController extends Controller
     public function execute(Request $request, ApprovalRequest $approval): RedirectResponse
     {
         $request->validate(['shift_override_reason' => 'nullable|string|max:500']);
-        $this->approvals->execute($request, $approval);
+        try {
+            $this->approvals->execute($request, $approval);
+        } catch (HttpException $exception) {
+            if ($exception->getStatusCode() !== 409) {
+                throw $exception;
+            }
+
+            return back()->withErrors(['approval' => $exception->getMessage().' Refresh this request; reject or cancel an outdated request instead.']);
+        }
 
         return back()->with('success', 'Request #'.$approval->id.' applied and recorded in History.');
     }

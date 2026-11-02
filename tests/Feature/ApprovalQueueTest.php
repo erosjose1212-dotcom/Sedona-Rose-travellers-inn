@@ -3,9 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\ApprovalRequest;
+use App\Models\Folio;
+use App\Models\Guest;
 use App\Models\PosItem;
+use App\Models\Room;
 use App\Models\User;
+use App\Services\ApprovalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use PHPUnit\Framework\Attributes\TestWith;
 use Spatie\Permission\Models\Permission;
@@ -116,6 +121,28 @@ class ApprovalQueueTest extends TestCase
         $this->actingAs($reviewer)->get(route('approvals.index'))->assertOk()->assertSee('₱130.00')
             ->assertSee('Stock: '.$item->name)->assertSee('25')->assertDontSee('<script>alert("stock")</script>', false)
             ->assertDontSee('<script>alert("reason")</script>', false);
+    }
+
+    public function test_settled_stay_request_shows_a_message_and_can_be_rejected_without_changing_the_bill(): void
+    {
+        $requester = $this->actor('admin');
+        $reviewer = $this->actor('owner');
+        $room = Room::create(['number' => '90', 'name' => 'Classic', 'type' => 'Classic Room', 'floor' => 1, 'status' => 'occupied', 'base_rate_3h' => 395]);
+        $guest = Guest::create(['name' => 'Approval regression guest']);
+        $folio = Folio::create(['room_id' => $room->id, 'guest_id' => $guest->id, 'user_id' => $requester->id,
+            'transaction_id' => 'STALE-REVIEW', 'status' => 'active', 'rate_tier' => '3h', 'room_charge' => 395,
+            'checked_in_at' => now(), 'expected_checkout_at' => now()->addHours(3)]);
+        $request = Request::create('/approvals', 'POST');
+        $request->setUserResolver(fn () => $requester);
+        $approval = app(ApprovalService::class)->request($request, 'folio_override', $folio->id, ['room_charge' => 350], 'Correct rate');
+        $folio->update(['status' => 'checked_out', 'checked_out_at' => now(), 'gross_total' => 395, 'net_total' => 395]);
+
+        $this->actingAs($reviewer)->from(route('approvals.index'))->post(route('approvals.review', $approval), ['decision' => 'approve', 'note' => 'Review request'])
+            ->assertRedirect(route('approvals.index'))->assertSessionHasErrors('approval');
+        $this->assertSame('pending', $approval->fresh()->status);
+        $this->assertSame('395.00', $folio->fresh()->room_charge);
+        $this->post(route('approvals.review', $approval), ['decision' => 'reject', 'note' => 'Guest already checked out'])->assertSessionHasNoErrors();
+        $this->assertSame('rejected', $approval->fresh()->status);
     }
 
     private function actor(string $role): User

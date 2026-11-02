@@ -150,8 +150,11 @@
                                 <button type="button" 
                                     onclick="openStockModal(this.dataset.itemId, this.dataset.itemName, this.dataset.stockQuantity)" data-item-id="{{ $item->id }}" data-item-name="{{ $item->name }}" data-stock-quantity="{{ $item->stock_quantity ?? 0 }}"
                                     class="px-2.5 py-1 bg-slate-800 hover:bg-black text-white text-[10px] font-bold rounded shadow-sm">
-                                    {{ $canAdjustStock ? '+ Restock / Adjust' : '+ Add Stock' }}
+                                    + Add Stock
                                 </button>
+                                @if($canAdjustStock)
+                                    <button type="button" onclick="openStockModal(this.dataset.itemId, this.dataset.itemName, this.dataset.stockQuantity, 'adjustment')" data-item-id="{{ $item->id }}" data-item-name="{{ $item->name }}" data-stock-quantity="{{ $item->stock_quantity ?? 0 }}" class="btn-addon">Edit Stock</button>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -351,11 +354,11 @@
 
 @push('scripts')
 <script>
-    function openStockModal(itemId, itemName, currentCount) {
+    function openStockModal(itemId, itemName, currentCount, mode = 'restock') {
         document.getElementById('stockModalTitle').textContent = `Stock: ${itemName}`;
         document.getElementById('stockModalItemName').textContent = itemName;
         document.getElementById('stockModalCurrentCount').textContent = currentCount;
-        document.getElementById('stockReason').value = 'restock';
+        document.getElementById('stockReason').value = mode;
         updateStockMode();
         document.getElementById('stockForm').action = `/inventory/${itemId}/stock`;
         document.getElementById('stockModal').classList.remove('hidden');

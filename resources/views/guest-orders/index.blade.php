@@ -44,6 +44,9 @@
         </section>
     @endif
 
+    @if($folio->isActive())
+        <a href="#previousGuestOrders" class="btn-addon" onclick="document.getElementById('previousGuestOrders').open = true">Xorder / Cancel a menu order</a>
+    @endif
     <details class="hms-card" id="previousGuestOrders" @if(session('success') || $errors->any()) open @endif>
         <summary class="hms-card-header cursor-pointer">PREVIOUS ORDERS · ₱{{ number_format($folio->pos_total, 2) }}</summary>
         @forelse($folio->orders as $order)
