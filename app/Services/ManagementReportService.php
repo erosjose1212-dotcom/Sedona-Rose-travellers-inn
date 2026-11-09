@@ -105,7 +105,7 @@ class ManagementReportService
         $journal = $this->journal($folios, $orders);
         $carry = $type === 'ledger' ? collect() : $this->carryovers($period);
         $notes = [
-            'Hotel time: Asia/Manila. Day: 6:30 AM–6:30 PM; night: 6:30 PM–next 6:30 AM. Start included, end excluded.',
+            'Hotel time: Asia/Manila. Shift boundaries follow the schedule effective on each report date. Start included, end excluded.',
             'Room bills are recognized at checkout; deposits and refunds appear in collections, not as additional revenue. Historical records use their saved amounts.',
             'Coupon numbers and service-charge amounts are not recorded separately in this system. They are left blank, not inferred.',
         ];
@@ -113,7 +113,7 @@ class ManagementReportService
             $notes[0] = 'Calendar dates in '.config('app.timezone').', matching the selected Executive P&L range. Start included, next midnight excluded. Expenses use expense date. Displayed transaction times use Asia/Manila.';
         }
         if ($period['finance_day']) {
-            $notes[0] = 'Accounting days run 6:30 AM–next 6:30 AM in Asia/Manila, matching Daily Finance and both operational shifts. These exports use current saved records, not frozen day-close snapshots.';
+            $notes[0] = 'Accounting days use the applicable Manila business-day cutoff, matching Daily Finance. These exports use current saved records, not frozen day-close snapshots.';
         }
         $sheets = [];
         if (in_array($type, ['shift_forms', 'transfer'], true)) {
@@ -420,7 +420,7 @@ class ManagementReportService
     {
         $local = CarbonImmutable::instance($at)->setTimezone('Asia/Manila');
 
-        return $local->subMinutes(390)->format('Y-m-d').' '.($local->hour * 60 + $local->minute >= 390 && $local->hour * 60 + $local->minute < 1110 ? 'Day' : 'Night');
+        return ShiftCalendar::date($local).' '.ucfirst(ShiftCalendar::shift($local));
     }
 
     /** @param list<string> $headers @param array<array-key, array<mixed>> $rows @param list<int> $totals @return array<string, mixed> */

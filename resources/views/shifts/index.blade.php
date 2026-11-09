@@ -14,14 +14,14 @@
     @if($propertyAccess)
     <form method="GET" class="hms-card flex flex-wrap items-end gap-3 text-xs">
         <label>Report date<input class="form-control-hms block mt-1" type="date" name="date" required value="{{ $reportPeriod['date'] }}"></label>
-        <label>Working shift<select class="form-control-hms block mt-1" name="shift"><option value="day" @selected($reportPeriod['shift'] === 'day')>Day · 6:30 AM–6:30 PM</option><option value="night" @selected($reportPeriod['shift'] === 'night')>Night · 6:30 PM–next 6:30 AM</option></select></label>
+        <label>Working shift<select class="form-control-hms block mt-1" name="shift"><option value="day" @selected($reportPeriod['shift'] === 'day')>Day · {{ \App\Services\ShiftCalendar::label($reportPeriod['date'], 'day') }}</option><option value="night" @selected($reportPeriod['shift'] === 'night')>Night · {{ \App\Services\ShiftCalendar::label($reportPeriod['date'], 'night') }}</option></select></label>
         <button class="rounded bg-brand px-4 py-2 font-bold text-white">Show shift</button>
         <p class="basis-full text-slate-600">Admin/owner money totals cover the full drawer record.</p>
     </form>
     @else
     <div class="hms-card text-xs">
         <strong>Current working shift: {{ $reportPeriod['label'] }} · {{ $reportPeriod['start']->format('m/d/Y h:i A') }}–{{ $reportPeriod['end']->format('m/d/Y h:i A') }}</strong>
-        <p class="text-slate-600">Money totals and printing show only your transactions in the current working shift. The shift changes automatically at 6:30 AM and 6:30 PM.</p>
+        <p class="text-slate-600">Money totals and printing show only your transactions in the current working shift. Reporting follows the effective shift schedule for the date.</p>
     </div>
     @endif
 

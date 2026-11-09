@@ -154,6 +154,18 @@
                                 </button>
                                 @if($canAdjustStock)
                                     <button type="button" onclick="openStockModal(this.dataset.itemId, this.dataset.itemName, this.dataset.stockQuantity, 'adjustment')" data-item-id="{{ $item->id }}" data-item-name="{{ $item->name }}" data-stock-quantity="{{ $item->stock_quantity ?? 0 }}" class="btn-addon">Edit Stock</button>
+                                    @unless($item->is_tracked)
+                                        <details>
+                                            <summary>Enable stock tracking</summary>
+                                            <form method="POST" action="{{ route('inventory.enable-tracking', $item) }}">
+                                                @csrf
+                                                <input type="hidden" name="operation_key" value="{{ \Illuminate\Support\Str::uuid() }}">
+                                                <label>Physical units counted <input name="stock_quantity" type="number" min="0" max="100000" required class="form-control-hms"></label>
+                                                <label>Reason <input name="reason" maxlength="200" required class="form-control-hms"></label>
+                                                <button class="btn-addon">Enable tracking</button>
+                                            </form>
+                                        </details>
+                                    @endunless
                                 @endif
                             </td>
                         </tr>

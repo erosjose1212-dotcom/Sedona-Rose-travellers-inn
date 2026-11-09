@@ -16,9 +16,9 @@
             </label>
             <label class="text-sm font-semibold text-slate-700 max-w-full">Shift
                 <select class="form-control-hms block max-w-full" name="shift">
-                    <option value="all" @selected($shift === 'all')>Both shifts (24 hours)</option>
-                    <option value="day" @selected($shift === 'day')>Day · 6:30 AM–6:30 PM</option>
-                    <option value="night" @selected($shift === 'night')>Night · 6:30 PM–next 6:30 AM</option>
+                    <option value="all" @selected($shift === 'all')>Both shifts · {{ \App\Services\ShiftCalendar::label($date, 'all') }}</option>
+                    <option value="day" @selected($shift === 'day')>Day · {{ \App\Services\ShiftCalendar::label($date, 'day') }}</option>
+                    <option value="night" @selected($shift === 'night')>Night · {{ \App\Services\ShiftCalendar::label($date, 'night') }}</option>
                 </select>
             </label>
             <button class="btn-occupied" type="submit">Show period</button>

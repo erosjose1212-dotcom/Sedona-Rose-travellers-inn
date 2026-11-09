@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ShiftCalendar;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -66,9 +67,6 @@ class Shift extends Model
      */
     public static function typeForTime(Carbon $time): string
     {
-        $local = $time->copy()->setTimezone('Asia/Manila');
-        $minutes = (int) $local->format('G') * 60 + (int) $local->format('i');
-
-        return ($minutes >= 390 && $minutes < 1110) ? 'day' : 'night';
+        return ShiftCalendar::shift($time);
     }
 }

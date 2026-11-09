@@ -9,6 +9,7 @@ use App\Models\Room;
 use App\Services\ApprovalService;
 use App\Services\AuditService;
 use App\Services\BillingService;
+use App\Services\BusinessDayService;
 use App\Services\DiscountService;
 use App\Services\FinancialPostingService;
 use App\Services\InventoryService;
@@ -16,6 +17,7 @@ use App\Services\ShiftAccessService;
 use App\Services\StayCancellationService;
 use App\Services\StayRateService;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -197,6 +199,72 @@ class CheckInController extends Controller
         return redirect()->route('dashboard')->with('success', 'Stay extended.');
     }
 
+    public function showExtensionCorrection(Request $request, Folio $folio): View
+    {
+        abort_unless($request->user()->hasRole('owner'), 403);
+        $this->requireActive($folio);
+        abort_if($folio->isOpenTime(), 409, 'Open Time uses automatic hourly billing.');
+        $data = $request->validate(['hours' => 'sometimes|required|integer|min:0|max:8760']);
+        $hours = (int) ($data['hours'] ?? $folio->extra_hours);
+        $preview = $this->extensionCorrectionPreview($folio, $hours);
+
+        return view('checkout.extension-correction', compact('folio', 'hours', 'preview'));
+    }
+
+    public function correctExtension(Request $request, Folio $folio, BusinessDayService $days): RedirectResponse
+    {
+        abort_unless($request->user()->hasRole('owner'), 403);
+        $data = $request->validate([
+            'hours' => 'required|integer|min:0|max:8760',
+            'reason' => 'required|string|max:500',
+            'preview_key' => 'required|string|size:64',
+        ]);
+        $this->posting->execute($request, 'folio.correct_extension', $folio->id, $data, function () use ($request, $folio, $data, $days): array {
+            [$locked, $room] = $this->lockActive($folio);
+            $days->assertWritable();
+            abort_if($locked->isOpenTime(), 409, 'Open Time uses automatic hourly billing.');
+            $hours = (int) $data['hours'];
+            $preview = $this->extensionCorrectionPreview($locked, $hours);
+            if (! hash_equals($preview['key'], $data['preview_key']) || $hours === (int) $locked->extra_hours) {
+                throw ValidationException::withMessages(['hours' => 'The bill changed or the hours are unchanged. Preview the correction again.']);
+            }
+            if ($preview['checkout']->gt($locked->expected_checkout_at)) {
+                $this->stayRates->assertReservationAvailable($room, now(), $preview['checkout'], $locked->booking_id);
+            }
+            $before = $locked->only(['extra_hours', 'expected_checkout_at', 'net_total']);
+            $locked->extra_hours = $hours;
+            $locked->expected_checkout_at = $preview['checkout'];
+            $locked->recalculate();
+            $this->audit->record($request, 'folio.extension_corrected', $locked, [
+                'before' => $before, 'after' => $locked->only(array_keys($before)),
+                'reason' => $data['reason'], 'operation_key' => $request->input('operation_key'),
+                'before_balance' => $preview['before']['finalBalanceToPay'], 'after_balance' => $preview['after']['finalBalanceToPay'],
+            ]);
+
+            return ['folio_id' => $locked->id];
+        });
+
+        return redirect()->route('checkout.process', $folio)->with('success', 'Extension corrected. Review the updated bill and replace any earlier billing copy.');
+    }
+
+    /** @return array{checkout: CarbonInterface, before: array<string, mixed>, after: array<string, mixed>, key: string} */
+    private function extensionCorrectionPreview(Folio $folio, int $hours): array
+    {
+        $copy = clone $folio;
+        $copy->extra_hours = $hours;
+        $checkout = $folio->room->getCheckoutForTier($folio->rate_tier, $folio->checked_in_at, $hours);
+        $copy->expected_checkout_at = $checkout;
+        $billing = app(BillingService::class);
+        $at = now();
+        $before = $billing->calculate($folio, $at);
+        $after = $billing->calculate($copy, $at);
+        $state = $folio->getRawOriginal();
+        ksort($state);
+        $key = hash_hmac('sha256', serialize([$state, $hours, $checkout->toIso8601String(), $before['attributes'], $after['attributes']]), config('app.key'));
+
+        return compact('checkout', 'before', 'after', 'key');
+    }
+
     public function convertPackage(Request $request, Folio $folio): RedirectResponse
     {
         $data = $request->validate(['rate_tier' => 'required|in:12h,24h', 'reason' => 'required|string|max:500']);
@@ -371,7 +439,7 @@ class CheckInController extends Controller
             $snapshot = null;
             if ($document === 'billing') {
                 abort_if($locked->status === 'voided', 409, 'Cancelled stays cannot issue billing statements.');
-                $snapshot = $this->billingSnapshot($this->viewData($locked, $request, useCurrentTime: true));
+                $snapshot = $this->billingSnapshot($this->viewData($locked, $request, useCurrentTime: true) + ['extensionCorrected' => $this->hasExtensionCorrection($locked)]);
                 if ($locked->billing_printed_at === null) {
                     $locked->billing_printed_at = now();
                     $locked->save();
@@ -389,7 +457,13 @@ class CheckInController extends Controller
 
     public function showBillingStatement(Request $request, Folio $folio): View
     {
-        return view('checkout.billing', $this->viewData($folio, $request));
+        return view('checkout.billing', $this->viewData($folio, $request) + ['extensionCorrected' => $this->hasExtensionCorrection($folio)]);
+    }
+
+    private function hasExtensionCorrection(Folio $folio): bool
+    {
+        return DB::table('audit_logs')->where('auditable_type', Folio::class)->where('auditable_id', $folio->id)
+            ->where('event', 'folio.extension_corrected')->exists();
     }
 
     public function requestBillingPrint(Request $request, Folio $folio): View|RedirectResponse

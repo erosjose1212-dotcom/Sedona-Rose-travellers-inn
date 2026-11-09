@@ -12,6 +12,7 @@ use App\Models\Room;
 use App\Models\Shift;
 use App\Models\User;
 use App\Services\DiscountService;
+use App\Services\ShiftCalendar;
 use App\Services\ShiftReportService;
 use App\Services\StayRateService;
 use Carbon\CarbonImmutable;
@@ -179,7 +180,7 @@ class DashboardController extends Controller
             $sharesDrawer = $activeShift && config('sedona.continuous_shift_enabled') && $request->user()->can('operate-shift', $activeShift);
             $usesDrawer = $ownsDrawer || $sharesDrawer;
             $hotelTime = now()->setTimezone('Asia/Manila');
-            $reportShift = $hotelTime->format('H:i') >= '06:30' && $hotelTime->format('H:i') < '18:30' ? 'day' : 'night';
+            $reportShift = ShiftCalendar::shift($hotelTime);
             $myPeriod = app(ShiftReportService::class)->period(null, $reportShift);
             $myShiftStart = $myPeriod['start']->setTimezone(config('app.timezone'));
             if ($usesDrawer && $activeShift->opened_at->greaterThan($myShiftStart)) {

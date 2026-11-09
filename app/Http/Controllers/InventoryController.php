@@ -101,6 +101,23 @@ class InventoryController extends Controller
         return redirect()->route('inventory.index')->with('success', 'Stock count saved immediately. No approval is required.');
     }
 
+    public function enableTracking(Request $request, PosItem $item): RedirectResponse
+    {
+        abort_unless($request->user()->hasAnyRole(['admin', 'owner']), 403);
+        $validated = $request->validate([
+            'stock_quantity' => 'required|integer|min:0|max:100000',
+            'reason' => 'required|string|max:200',
+        ]);
+        app(FinancialPostingService::class)->execute($request, 'inventory.enable_tracking', $item->id, $validated, function () use ($request, $item, $validated): array {
+            $stock = $this->inventoryService->enableTracking($item, (int) $validated['stock_quantity'], $validated['reason'], $request->user()->id);
+            app(AuditService::class)->record($request, 'inventory.tracking_enabled', $stock, ['physical_count' => $stock->stock_quantity, 'reason' => $validated['reason']]);
+
+            return ['item_id' => $stock->id, 'balance_after' => $stock->stock_quantity];
+        });
+
+        return redirect()->route('inventory.index')->with('success', 'Tracking enabled with the recorded physical count. Future orders will deduct stock.');
+    }
+
     /**
      * Submit admin/owner physical counts for multiple items.
      */

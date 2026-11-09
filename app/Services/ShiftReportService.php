@@ -13,13 +13,9 @@ class ShiftReportService
     /** @return array{date: string, shift: string, day: CarbonImmutable, start: CarbonImmutable, end: CarbonImmutable, label: string} */
     public function period(?string $date = null, string $shift = 'all'): array
     {
-        $date ??= CarbonImmutable::now('Asia/Manila')->subMinutes(390)->toDateString();
+        $date ??= ShiftCalendar::date();
         $day = CarbonImmutable::parse($date, 'Asia/Manila')->startOfDay();
-        $start = $day->setTime(6, 30);
-        if ($shift === 'night') {
-            $start = $start->addHours(12);
-        }
-        $end = $start->addHours($shift === 'all' ? 24 : 12);
+        [$start, $end] = ShiftCalendar::bounds($date, $shift);
         $label = match ($shift) {
             'day' => 'Day shift',
             'night' => 'Night shift',

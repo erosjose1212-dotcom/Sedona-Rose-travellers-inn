@@ -22,7 +22,7 @@ class ManagementWorkbookService
         foreach ($report['sheets'] as $index => $table) {
             $sheet = $book->createSheet($index)->setTitle($table['name']);
             $last = Coordinate::stringFromColumnIndex(count($table['headers']));
-            foreach ([$report['property'], $table['name'], $report['period']['start_date'].' to '.$report['period']['end_date'].' · '.($report['period']['calendar'] ? 'Calendar dates matching P&L' : ($report['period']['finance_day'] ? 'Daily Finance · 6:30 AM cutoff' : ucfirst($report['period']['shift']).' shifts · Asia/Manila')), 'Generated: '.$report['generated_at']] as $row => $text) {
+            foreach ([$report['property'], $table['name'], $report['period']['start_date'].' to '.$report['period']['end_date'].' · '.($report['period']['calendar'] ? 'Calendar dates matching P&L' : ($report['period']['finance_day'] ? 'Daily Finance · Asia/Manila' : ucfirst($report['period']['shift']).' shifts · Asia/Manila')), 'Generated: '.$report['generated_at']] as $row => $text) {
                 $sheet->mergeCells('A'.($row + 1).':'.$last.($row + 1));
                 $sheet->setCellValueExplicit('A'.($row + 1), $text, DataType::TYPE_STRING);
             }

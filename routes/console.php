@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\ShiftCalendar;
 use App\Services\TransactionResetService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -43,3 +44,17 @@ Artisan::command('pms:reset-transactions {--force : Confirm deletion of all tran
 
     return 0;
 })->purpose('Back up and clear transactions while keeping accounts, catalog, stock and configuration');
+
+Artisan::command('pms:schedule-shift-cutover {date : Future Manila date in YYYY-MM-DD format}', function (): int {
+    try {
+        ShiftCalendar::scheduleCutover($this->argument('date'));
+    } catch (InvalidArgumentException $exception) {
+        $this->error($exception->getMessage());
+
+        return 1;
+    }
+
+    $this->info('5 AM / 5 PM reporting is scheduled for '.$this->argument('date').' at 5:00 AM Manila time.');
+
+    return 0;
+})->purpose('Save the one-time Manila reporting schedule cutover');

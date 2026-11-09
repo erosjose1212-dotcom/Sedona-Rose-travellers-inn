@@ -171,6 +171,9 @@
 
         <div class="double-divider"></div>
         <div class="text-center font-bold" style="font-size: 11px;">STATEMENT OF ACCOUNT / GUEST FOLIO</div>
+        @if($extensionCorrected ?? false)
+            <div class="text-center font-bold">REVISED STATEMENT &mdash; EXTENSION CORRECTED</div>
+        @endif
         <div class="text-center" style="font-size: 10px; color: #000;">*** PRE-PRINT BILLING FOR ROOM DELIVERY ***</div>
         <div class="divider"></div>
 

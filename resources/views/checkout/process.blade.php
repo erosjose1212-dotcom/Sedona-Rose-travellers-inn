@@ -4,6 +4,9 @@
 @section('subtitle', 'Check Out | Settle Guest Stay & Issue Official Receipt')
 
 @section('top_action')
+    @if(auth()->user()->hasRole('owner') && $folio->isActive() && !$folio->isOpenTime())
+        <a href="{{ route('folios.extension.preview', $folio) }}" class="btn-occupied">Correct saved extension</a>
+    @endif
     @if(auth()->user()->hasAnyRole(['admin', 'owner']))
         <a href="{{ route('admin.check-in-times.index', ['folio_id' => $folio->id]) }}" class="bg-brand text-white text-[11px] font-bold px-3 py-1 rounded">Correct check-in time</a>
     @endif

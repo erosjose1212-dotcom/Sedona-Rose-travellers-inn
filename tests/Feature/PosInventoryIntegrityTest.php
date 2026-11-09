@@ -391,6 +391,55 @@ class PosInventoryIntegrityTest extends TestCase
         $this->assertDatabaseCount('inventory_events', 0);
     }
 
+    #[TestWith(['quick', true, 8])]
+    #[TestWith(['pos', true, 8])]
+    #[TestWith(['quick', false, 10])]
+    public function test_submitted_mineral_water_uses_the_catalog_rows_tracking_flag(string $path, bool $tracked, int $remaining): void
+    {
+        $cashier = $this->cashier();
+        $folio = $this->folio($cashier);
+        $item = $this->item(['name' => 'Mineral Water (Purified 500ml)', 'price' => 25, 'is_tracked' => $tracked]);
+        $url = $path === 'quick' ? route('folios.addon', $folio) : route('pos.order.store');
+        $payload = ['operation_key' => (string) Str::uuid()] + ($path === 'quick'
+            ? ['pos_item_id' => $item->id, 'quantity' => 2]
+            : ['order_type' => 'room_charge', 'room_id' => $folio->room_id, 'folio_id' => $folio->id, 'items' => [['id' => $item->id, 'qty' => 2]]]);
+
+        $this->actingAs($cashier)->post($url, $payload)->assertSessionHas('success');
+        $this->post($url, $payload)->assertSessionHas('success');
+
+        $this->assertSame($remaining, $item->fresh()->stock_quantity);
+        $this->assertDatabaseCount('orders', 1);
+        $this->assertDatabaseHas('order_items', ['pos_item_id' => $item->id, 'quantity' => 2]);
+        $this->assertDatabaseCount('inventory_events', $tracked ? 1 : 0);
+        if ($tracked) {
+            $this->assertDatabaseHas('inventory_events', ['pos_item_id' => $item->id, 'quantity_change' => -2, 'reference_id' => Order::sole()->transaction_id]);
+        }
+    }
+
+    public function test_owner_can_enable_water_tracking_from_a_physical_count_without_replaying_prior_orders(): void
+    {
+        $cashier = $this->cashier();
+        $owner = User::factory()->create()->assignRole(Role::findOrCreate('owner', 'web'));
+        $owner->givePermissionTo(Permission::findOrCreate('manage_pos', 'web'));
+        $folio = $this->folio($cashier);
+        $water = $this->item(['name' => 'Mineral Water (Purified 500ml)', 'is_tracked' => false, 'stock_quantity' => 50]);
+        $order = ['pos_item_id' => $water->id, 'quantity' => 2];
+        $setup = ['stock_quantity' => 10, 'reason' => 'Counted unopened bottles', 'operation_key' => (string) Str::uuid()];
+        $this->actingAs($cashier)->post(route('folios.addon', $folio), $order + ['operation_key' => (string) Str::uuid()])->assertSessionHas('success');
+        $this->post(route('inventory.enable-tracking', $water), $setup)->assertForbidden();
+
+        $this->actingAs($owner)->post(route('inventory.enable-tracking', $water), $setup)->assertSessionHas('success');
+        $this->post(route('inventory.enable-tracking', $water), $setup)->assertSessionHas('success');
+        $this->actingAs($cashier)->post(route('folios.addon', $folio), $order + ['operation_key' => (string) Str::uuid()])->assertSessionHas('success');
+
+        $this->assertTrue($water->fresh()->is_tracked);
+        $this->assertSame(8, $water->fresh()->stock_quantity);
+        $this->assertDatabaseCount('orders', 2);
+        $this->assertDatabaseCount('inventory_events', 2);
+        $this->assertDatabaseHas('inventory_events', ['pos_item_id' => $water->id, 'event_type' => 'adjustment', 'balance_after' => 10]);
+        $this->assertDatabaseHas('audit_logs', ['event' => 'inventory.tracking_enabled', 'user_id' => $owner->id]);
+    }
+
     public function test_quick_addon_rejects_unavailable_items_without_charging_the_folio(): void
     {
         $cashier = $this->cashier();

@@ -46,15 +46,15 @@
                 </label>
                 <label class="min-w-0 max-w-full font-bold text-slate-700">Reporting shift
                     <select name="shift" class="form-control-hms block mt-1 max-w-full">
-                        <option value="all" @selected($shift === 'all')>Both shifts · 6:30 AM to next 6:30 AM</option>
-                        <option value="day" @selected($shift === 'day')>Day · 6:30 AM to 6:30 PM</option>
-                        <option value="night" @selected($shift === 'night')>Night · 6:30 PM to next 6:30 AM</option>
+                        <option value="all" @selected($shift === 'all')>Both shifts · {{ \App\Services\ShiftCalendar::label($reportDate, 'all') }}</option>
+                        <option value="day" @selected($shift === 'day')>Day · {{ \App\Services\ShiftCalendar::label($reportDate, 'day') }}</option>
+                        <option value="night" @selected($shift === 'night')>Night · {{ \App\Services\ShiftCalendar::label($reportDate, 'night') }}</option>
                     </select>
                 </label>
                 <button type="submit" class="rounded bg-brand px-4 py-2 font-bold text-white hover:bg-brand-hover">Show period</button>
             </form>
             <p class="text-sm font-semibold text-slate-700">{{ $startDate->copy()->setTimezone('Asia/Manila')->format('M d, Y h:i A') }} → {{ $endDate->copy()->setTimezone('Asia/Manila')->format('M d, Y h:i A') }} (hotel time)</p>
-            <p class="text-xs text-slate-500">Before 6:30 AM, Today belongs to the previous shift date. Shift expenses are counted when recorded. Transactions at the ending time belong to the next shift.</p>
+            <p class="text-xs text-slate-500">Before the morning cutoff, Today belongs to the previous shift date. Shift expenses are counted when recorded. Transactions at the ending time belong to the next shift.</p>
         </section>
     @endif
 

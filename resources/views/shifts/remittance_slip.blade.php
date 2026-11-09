@@ -98,7 +98,7 @@
         @if($propertyAccess)
         <form method="GET" style="margin-top:10px;">
             <label>Shift date <input type="date" name="date" required value="{{ $reportPeriod['date'] }}"></label>
-            <label>Shift <select name="shift"><option value="day" @selected($reportPeriod['shift'] === 'day')>Day · 6:30 AM–6:30 PM</option><option value="night" @selected($reportPeriod['shift'] === 'night')>Night · 6:30 PM–next 6:30 AM</option></select></label>
+            <label>Shift <select name="shift"><option value="day" @selected($reportPeriod['shift'] === 'day')>Day · {{ \App\Services\ShiftCalendar::label($reportPeriod['date'], 'day') }}</option><option value="night" @selected($reportPeriod['shift'] === 'night')>Night · {{ \App\Services\ShiftCalendar::label($reportPeriod['date'], 'night') }}</option></select></label>
             <button type="submit" class="btn-print">Show shift</button>
         </form>
         @else

@@ -14,6 +14,7 @@ use App\Services\BusinessDayService;
 use App\Services\FinancialPostingService;
 use App\Services\FinancialSummaryService;
 use App\Services\ShiftAccessService;
+use App\Services\ShiftCalendar;
 use App\Services\ShiftReportService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
@@ -90,7 +91,7 @@ class ShiftController extends Controller
                 $float = (float) $validated['opening_float'];
                 $shift = Shift::create([
                     'opened_by' => $request->user()->id, 'shift_type' => Shift::typeForTime(now()),
-                    'shift_date' => now()->toDateString(), 'opened_at' => now(), 'opening_float' => $float,
+                    'shift_date' => ShiftCalendar::date(), 'opened_at' => now(), 'opening_float' => $float,
                     'cash_total' => $float, 'expected_cash' => $float, 'is_frozen' => false,
                 ]);
                 $audit->record($request, 'shift.opened', $shift, ['opening_float' => $float]);
@@ -231,8 +232,8 @@ class ShiftController extends Controller
     {
         $filters = $propertyAccess ? $request->validate(['date' => 'nullable|date_format:Y-m-d', 'shift' => 'nullable|in:day,night']) : [];
         $at = ($propertyAccess && $shift?->closed_at ? $shift->closed_at->copy()->subSecond() : now())->setTimezone('Asia/Manila');
-        $defaultShift = $at->format('H:i') >= '06:30' && $at->format('H:i') < '18:30' ? 'day' : 'night';
+        $defaultShift = ShiftCalendar::shift($at);
 
-        return app(ShiftReportService::class)->period($filters['date'] ?? $at->copy()->subMinutes(390)->toDateString(), $filters['shift'] ?? $defaultShift);
+        return app(ShiftReportService::class)->period($filters['date'] ?? ShiftCalendar::date($at), $filters['shift'] ?? $defaultShift);
     }
 }

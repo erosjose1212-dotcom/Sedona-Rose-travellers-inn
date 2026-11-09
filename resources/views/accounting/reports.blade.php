@@ -8,8 +8,8 @@
     $chosenShift = old('shift', $period['shift']);
     $fromLabel = \Carbon\CarbonImmutable::parse($period['start_date'])->format('M j, Y');
     $toLabel = \Carbon\CarbonImmutable::parse($period['end_date'])->format('M j, Y');
-    $shiftChoices = ['all' => ['Both shifts', '6:30 AM to next 6:30 AM'], 'day' => ['Day only', '6:30 AM–6:30 PM'], 'night' => ['Night only', '6:30 PM to next 6:30 AM']];
-    $basisLabel = $period['calendar'] ? 'Calendar dates · matching P&L' : ($period['finance_day'] ? 'Daily Finance · 6:30 AM cutoff' : $shiftChoices[$period['shift']][0].' · 6:30 AM / PM');
+    $shiftChoices = ['all' => ['Both shifts', 'Full hotel day'], 'day' => ['Day only', 'Morning to evening'], 'night' => ['Night only', 'Evening to next morning']];
+    $basisLabel = $period['calendar'] ? 'Calendar dates · matching P&L' : ($period['finance_day'] ? 'Daily Finance · Manila time' : $shiftChoices[$period['shift']][0].' · Manila time');
     $sheetCount = count($report['sheets']);
 @endphp
 <div class="space-y-5 report-workspace">
@@ -50,7 +50,7 @@
             @if($period['calendar'] || $period['finance_day'])
                 <input name="shift" value="all" type="hidden">
                 <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-                    {{ $period['calendar'] ? 'These dates follow the Profit & Loss calendar range. Both shifts are included.' : 'This report follows Daily Finance accounting dates, with a 6:30 AM cutoff. Both shifts are included.' }}
+                    {{ $period['calendar'] ? 'These dates follow the Profit & Loss calendar range. Both shifts are included.' : 'This report follows Daily Finance accounting dates, with the cutoff effective on each accounting date. Both shifts are included.' }}
                     <a id="report-hotel-shifts" class="mt-1 block font-semibold text-brand underline" href="{{ route('admin.accounting.reports', ['report' => $report['type'], 'range' => 'custom', 'start_date' => $period['start_date'], 'end_date' => $period['end_date'], 'shift' => 'all']) }}">Choose a hotel shift instead</a>
                 </div>
             @else
@@ -61,7 +61,7 @@
                 </div>
             @endif
             @error('shift')<p class="text-sm text-rose-700">{{ $message }}</p>@enderror
-            <p id="report-date-help" class="text-xs leading-relaxed text-slate-500">@if($period['calendar'])Dates match the existing P&L calendar filters.@else A hotel day starts at 6:30 AM. Night shift continues into the next morning. For a date range, the selected shift is included on every date.@endif Choose up to 366 dates per file.</p>
+            <p id="report-date-help" class="text-xs leading-relaxed text-slate-500">@if($period['calendar'])Dates match the existing P&L calendar filters.@else Each hotel day starts at its applicable morning cutoff. Night shift continues into the next morning. For a date range, the selected shift is included on every date.@endif Choose up to 366 dates per file.</p>
             <div class="flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
                 <button class="inline-flex items-center justify-center rounded-lg bg-brand px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" name="format" value="preview">Show report</button>
                 <button class="inline-flex items-center justify-center rounded-lg border border-[#c5aebb] bg-[#fbf6f9] px-5 py-2.5 text-sm font-bold text-brand hover:bg-[#f2e6ed] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand" name="format" value="xlsx">Download Excel</button>

@@ -288,12 +288,28 @@ class InventoryService
         });
     }
 
-    private function setLockedCount(PosItem $item, int $newCount, string $reason, ?string $notes, ?int $userId): void
+    public function enableTracking(PosItem $item, int $count, string $reason, int $userId): PosItem
+    {
+        return DB::transaction(function () use ($item, $count, $reason, $userId): PosItem {
+            $locked = PosItem::whereKey($item->id)->lockForUpdate()->firstOrFail();
+            if ($locked->is_retired || $locked->is_tracked) {
+                throw ValidationException::withMessages(['stock_quantity' => 'Only an active, untracked item can be set up for stock tracking. Refresh the stock list.']);
+            }
+            $locked->is_tracked = true;
+            $this->setLockedCount($locked, $count, 'adjustment', 'Tracking enabled with physical count: '.$reason, $userId, updateAvailability: false);
+
+            return $locked;
+        });
+    }
+
+    private function setLockedCount(PosItem $item, int $newCount, string $reason, ?string $notes, ?int $userId, bool $updateAvailability = true): void
     {
         $previousStock = (int) $item->stock_quantity;
         $user = $userId ? User::find($userId) : Auth::user();
         $item->stock_quantity = $newCount;
-        $item->is_available = $newCount > 0;
+        if ($updateAvailability) {
+            $item->is_available = $newCount > 0;
+        }
         $item->save();
         InventoryEvent::create([
             'pos_item_id' => $item->id,

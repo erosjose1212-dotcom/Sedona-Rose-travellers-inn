@@ -17,7 +17,7 @@
     <div class="bg-white p-3 border-l-4 border-[#421A2B] shadow-sm flex items-center justify-between">
         <div>
             <h1 class="font-bold text-slate-900 text-sm uppercase tracking-wide">Cashier Drawer Blind Audits & Shift Reconciliations</h1>
-            <p class="text-xs text-slate-500">Saved drawer count logs. Reporting shifts run 6:30 AM–6:30 PM and 6:30 PM–6:30 AM.</p>
+            <p class="text-xs text-slate-500">Saved drawer count logs. Reports use the shift schedule effective on each date.</p>
         </div>
         <div class="text-xs font-mono text-slate-600">
             Total Shift Logs: <strong class="text-[#421A2B]">{{ $shifts->total() }}</strong>

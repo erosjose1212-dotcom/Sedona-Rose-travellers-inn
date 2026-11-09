@@ -87,6 +87,8 @@ Route::middleware(['auth', 'auth.session', 'active_account'])->group(function ()
 
         // Extend Stay, Discount, Add-Ons, Room Transfer, Force Checkout
         Route::post('/folios/{folio}/extend', [CheckInController::class, 'extendStay'])->name('folios.extend');
+        Route::get('/folios/{folio}/extension-correction', [CheckInController::class, 'showExtensionCorrection'])->name('folios.extension.preview');
+        Route::post('/folios/{folio}/extension-correction', [CheckInController::class, 'correctExtension'])->name('folios.extension.correct');
         Route::post('/folios/{folio}/discount', [CheckInController::class, 'applyDiscount'])->name('folios.discount');
         Route::post('/folios/{folio}/transfer', [CheckInController::class, 'transferRoom'])->name('folios.transfer');
         Route::post('/folios/{folio}/force-checkout', [CheckInController::class, 'requestForceCheckout'])->name('folios.force_checkout');
@@ -135,6 +137,7 @@ Route::middleware(['auth', 'auth.session', 'active_account'])->group(function ()
         Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
         Route::post('/inventory/recount', [InventoryController::class, 'batchRecount'])->name('inventory.recount');
         Route::post('/inventory/{item}/stock', [InventoryController::class, 'updateStock'])->name('inventory.update-stock');
+        Route::post('/inventory/{item}/enable-tracking', [InventoryController::class, 'enableTracking'])->name('inventory.enable-tracking');
         Route::get('/inventory/export-csv', [InventoryController::class, 'exportCsv'])->name('inventory.export-csv');
     });
 

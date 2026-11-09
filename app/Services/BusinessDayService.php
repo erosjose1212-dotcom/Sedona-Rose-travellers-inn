@@ -31,15 +31,15 @@ class BusinessDayService
 
     public function date(?CarbonInterface $at = null): string
     {
-        return CarbonImmutable::instance($at ?? now())->setTimezone('Asia/Manila')->subMinutes(390)->toDateString();
+        return ShiftCalendar::date($at);
     }
 
     /** @return array{CarbonImmutable, CarbonImmutable} */
     public function bounds(string $date): array
     {
-        $start = CarbonImmutable::parse($date.' 06:30:00', 'Asia/Manila')->setTimezone(config('app.timezone'));
+        [$start, $end] = ShiftCalendar::bounds($date);
 
-        return [$start, $start->addDay()];
+        return [$start->setTimezone(config('app.timezone')), $end->setTimezone(config('app.timezone'))];
     }
 
     public function assertWritable(?string $date = null): BusinessDay
@@ -147,7 +147,7 @@ class BusinessDayService
             $day = $this->assertWritable($date);
             [, $end] = $this->bounds($date);
             if (now()->lessThan($end)) {
-                throw ValidationException::withMessages(['business_date' => 'Wait until the 6:30 AM cutoff has passed.']);
+                throw ValidationException::withMessages(['business_date' => 'Wait until the '.$end->setTimezone('Asia/Manila')->format('g:i A').' cutoff has passed.']);
             }
             $snapshot = $this->snapshot($date);
             if ($snapshot['exceptions'] !== []) {

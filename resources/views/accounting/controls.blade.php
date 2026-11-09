@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('title', 'Daily Finance & Reconciliation')
-@section('subtitle', '6:30 AM cutoff · Asia/Manila · versioned day closing')
+@section('subtitle', \Carbon\CarbonImmutable::parse($snapshot['ends_at'])->setTimezone('Asia/Manila')->format('g:i A').' cutoff · Asia/Manila · versioned day closing')
 @section('top_action')
     <a href="{{ route('admin.accounting.reports', ['report' => 'financial_audit', 'range' => 'today', 'report_date' => $date, 'finance_day' => 1]) }}" class="inline-flex items-center justify-center rounded bg-brand px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-brand-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Daily Excel reports</a>
 @endsection

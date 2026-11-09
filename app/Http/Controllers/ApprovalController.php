@@ -96,7 +96,8 @@ class ApprovalController extends Controller
         try {
             $this->approvals->review($request, $approval, $data['decision'] === 'approve', $data['note']);
         } catch (HttpException $exception) {
-            if ($exception->getStatusCode() !== 409) {
+            if ($exception->getStatusCode() !== 409
+                || ($approval->kind === 'handover_variance' && ! config('sedona.shift_handover_enabled'))) {
                 throw $exception;
             }
 
@@ -115,7 +116,8 @@ class ApprovalController extends Controller
         try {
             $this->approvals->execute($request, $approval);
         } catch (HttpException $exception) {
-            if ($exception->getStatusCode() !== 409) {
+            if ($exception->getStatusCode() !== 409
+                || ($approval->kind === 'handover_variance' && ! config('sedona.shift_handover_enabled'))) {
                 throw $exception;
             }
 

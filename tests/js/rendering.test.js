@@ -327,17 +327,21 @@ test('extend modal submits the selected twelve or twenty-four hour package with 
     assert.equal(document.elements.xtendConversionTier.value, '12h');
 });
 
-test('a billing-printed stay cannot open the extension or conversion modal', () => {
+test('a billing-printed stay can extend while unavailable package conversions stay disabled', () => {
     const blade = readFileSync(new URL('../../resources/views/dashboard/partials/folio-modals.blade.php', import.meta.url), 'utf8');
     const source = blade.slice(blade.indexOf('function openXtendModal('), blade.indexOf('function closeXtendModal('));
-    const notices = [];
-    const context = { FOLIO_EXTENSION_OPTIONS: { 1: { timeLocked: true } }, currentExtensionOptions: null,
-        window: { alert: message => notices.push(message) },
-        document: { getElementById() { throw new Error('Locked stay must not open an editable modal'); } } };
+    const document = documentWith(['xtendForm', 'convertStayForm', 'xtendCurrentTier', 'xtendCurrentCheckout',
+        'xtendConvert12Option', 'xtendConvertOption', 'xtendConversionHint', 'xtendHoursOption',
+        'xtendMode', 'xtendConversionReason', 'xtendModalTitle', 'xtendModal']);
+    const options = { timeLocked: true, extendUrl: '/extend', currentTier: '24h', conversions: {} };
+    const context = { document, FOLIO_EXTENSION_OPTIONS: { 1: options }, currentExtensionOptions: null };
     runInNewContext(source, context);
     context.openXtendModal(1, '21');
-    assert.equal(context.currentExtensionOptions, null);
-    assert.match(notices[0], /Stay times and package are locked/);
+    assert.equal(document.elements.xtendForm.action, '/extend');
+    assert.equal(document.elements.xtendMode.value, 'hours');
+    assert.equal(document.elements.xtendHoursOption.disabled, false);
+    assert.equal(document.elements.xtendConvert12Option.disabled, true);
+    assert.equal(document.elements.xtendConvertOption.disabled, true);
 });
 
 test('midnight promo live checkout estimate keeps fractional booked hours through the full grace period', () => {
