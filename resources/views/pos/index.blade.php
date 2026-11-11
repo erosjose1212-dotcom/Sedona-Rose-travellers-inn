@@ -247,8 +247,8 @@
                                 @else
                                     <span class="text-emerald-700 text-[11px] font-bold">✓ Completed</span>
                                 @endif
-                                @if($ord->type === 'room_charge' && $ord->isNew() && $ord->isWithinCancellationGrace() && $ord->folio?->isActive())
-                                    <a href="{{ route('folios.orders.index', $ord->folio_id) }}" class="inline-block px-2 py-1 bg-rose-700 hover:bg-rose-800 text-white font-bold text-[10px] rounded mt-1">Cancel order</a>
+                                @if($ord->type === 'room_charge' && $ord->isNew() && $ord->canCancelAtCurrentTime(auth()->user()) && $ord->folio?->isActive())
+                                    <a href="{{ route('folios.orders.index', ['folio' => $ord->folio_id, 'show_previous' => 1]) }}" class="inline-block px-2 py-1 bg-rose-700 hover:bg-rose-800 text-white font-bold text-[10px] rounded mt-1">Cancel order</a>
                                 @endif
                             </td>
                         </tr>

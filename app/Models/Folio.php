@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 
 class Folio extends Model
 {
+    public const MAX_EXTRA_HOURS = 65535;
+
     protected $fillable = [
         'room_id', 'guest_id', 'user_id', 'booking_id',
         'transaction_id', 'receipt_number', 'receipt_issued_at', 'rate_tier', 'stay_mode',

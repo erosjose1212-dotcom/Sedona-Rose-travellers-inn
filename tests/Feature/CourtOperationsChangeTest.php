@@ -23,10 +23,12 @@ class CourtOperationsChangeTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_only_the_owner_can_preview_and_correct_the_room_7_bill_once(): void
+    #[TestWith(['owner'])]
+    #[TestWith(['admin'])]
+    public function test_admin_and_owner_can_preview_and_correct_the_room_7_bill_once(string $role): void
     {
         $folio = $this->room7();
-        $this->actingAs($this->operator('owner'));
+        $this->actingAs($this->operator($role));
         $originalPrint = ['operation_key' => (string) Str::uuid()];
         $this->post(route('folios.billing.print', $folio), $originalPrint)->assertOk()->assertDontSee('EXTENSION CORRECTED');
         $preview = $this->get(route('folios.extension.preview', [$folio, 'hours' => 3]))
@@ -49,7 +51,6 @@ class CourtOperationsChangeTest extends TestCase
     }
 
     #[TestWith(['cashier'])]
-    #[TestWith(['admin'])]
     public function test_other_roles_cannot_use_the_extension_correction_endpoint(string $role): void
     {
         $folio = $this->room7();
@@ -59,6 +60,23 @@ class CourtOperationsChangeTest extends TestCase
         $this->post(route('folios.extension.correct', $folio), ['hours' => 3])->assertForbidden();
 
         $this->assertSame(6, (int) $folio->fresh()->extra_hours);
+    }
+
+    #[TestWith(['owner'])]
+    #[TestWith(['admin'])]
+    public function test_saved_extension_can_be_corrected_beyond_the_previous_cap(string $role): void
+    {
+        $folio = $this->room7();
+        $this->actingAs($this->operator($role));
+        $preview = $this->get(route('folios.extension.preview', [$folio, 'hours' => 8761]))
+            ->assertOk()->viewData('preview');
+
+        $this->post(route('folios.extension.correct', $folio), [
+            'hours' => 8761, 'reason' => 'Corrected extension record',
+            'preview_key' => $preview['key'], 'operation_key' => (string) Str::uuid(),
+        ])->assertSessionHasNoErrors()->assertRedirect(route('checkout.process', $folio));
+
+        $this->assertSame(8761, (int) $folio->fresh()->extra_hours);
     }
 
     #[TestWith(['active'])]

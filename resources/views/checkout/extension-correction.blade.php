@@ -8,7 +8,7 @@
         <ul role="alert">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
     @endif
     <form method="GET" action="{{ route('folios.extension.preview', $folio) }}">
-        <label>Corrected total extension hours <input type="number" name="hours" min="0" max="8760" required value="{{ $hours }}" class="form-control-hms"></label>
+        <label>Corrected total extension hours <input type="number" name="hours" min="0" max="{{ \App\Models\Folio::MAX_EXTRA_HOURS }}" required value="{{ $hours }}" class="form-control-hms"></label>
         <button class="btn-occupied">Preview correction</button>
     </form>
     @if($hours !== (int) $folio->extra_hours)

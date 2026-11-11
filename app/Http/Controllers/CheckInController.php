@@ -201,10 +201,10 @@ class CheckInController extends Controller
 
     public function showExtensionCorrection(Request $request, Folio $folio): View
     {
-        abort_unless($request->user()->hasRole('owner'), 403);
+        abort_unless($request->user()->hasAnyRole(['admin', 'owner']), 403);
         $this->requireActive($folio);
         abort_if($folio->isOpenTime(), 409, 'Open Time uses automatic hourly billing.');
-        $data = $request->validate(['hours' => 'sometimes|required|integer|min:0|max:8760']);
+        $data = $request->validate(['hours' => 'sometimes|required|integer|min:0|max:'.Folio::MAX_EXTRA_HOURS]);
         $hours = (int) ($data['hours'] ?? $folio->extra_hours);
         $preview = $this->extensionCorrectionPreview($folio, $hours);
 
@@ -213,9 +213,9 @@ class CheckInController extends Controller
 
     public function correctExtension(Request $request, Folio $folio, BusinessDayService $days): RedirectResponse
     {
-        abort_unless($request->user()->hasRole('owner'), 403);
+        abort_unless($request->user()->hasAnyRole(['admin', 'owner']), 403);
         $data = $request->validate([
-            'hours' => 'required|integer|min:0|max:8760',
+            'hours' => 'required|integer|min:0|max:'.Folio::MAX_EXTRA_HOURS,
             'reason' => 'required|string|max:500',
             'preview_key' => 'required|string|size:64',
         ]);

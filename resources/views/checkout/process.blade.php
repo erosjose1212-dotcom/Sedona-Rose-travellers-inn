@@ -4,7 +4,7 @@
 @section('subtitle', 'Check Out | Settle Guest Stay & Issue Official Receipt')
 
 @section('top_action')
-    @if(auth()->user()->hasRole('owner') && $folio->isActive() && !$folio->isOpenTime())
+    @if(auth()->user()->hasAnyRole(['admin', 'owner']) && $folio->isActive() && !$folio->isOpenTime())
         <a href="{{ route('folios.extension.preview', $folio) }}" class="btn-occupied">Correct saved extension</a>
     @endif
     @if(auth()->user()->hasAnyRole(['admin', 'owner']))

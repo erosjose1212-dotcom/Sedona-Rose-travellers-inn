@@ -47,7 +47,7 @@
     @if($folio->isActive())
         <a href="#previousGuestOrders" class="btn-addon" onclick="document.getElementById('previousGuestOrders').open = true">Xorder / Cancel a menu order</a>
     @endif
-    <details class="hms-card" id="previousGuestOrders" @if(session('success') || $errors->any()) open @endif>
+    <details class="hms-card" id="previousGuestOrders" @if(session('success') || $errors->any() || request()->boolean('show_previous')) open @endif>
         <summary class="hms-card-header cursor-pointer">PREVIOUS ORDERS · ₱{{ number_format($folio->pos_total, 2) }}</summary>
         @forelse($folio->orders as $order)
             <div class="mt-4 border border-slate-200 rounded overflow-hidden">
@@ -55,9 +55,11 @@
                     <span class="font-bold">{{ $order->transaction_id }} · {{ ucfirst($order->status) }}</span>
                     <span>{{ $order->created_at->format('m/d/Y h:i A') }} · {{ $order->cashier?->name ?? 'Staff' }}</span>
                 </div>
-                @if($folio->isActive() && $order->type === 'room_charge' && $order->isNew() && $order->isWithinCancellationGrace())
+                @if($folio->isActive() && $order->type === 'room_charge' && $order->isNew() && $order->canCancelAtCurrentTime(auth()->user()))
                     <div class="p-3 bg-rose-50 border-b border-rose-100 flex flex-wrap items-center justify-between gap-3">
-                        <p class="text-xs text-rose-900">Unprepared orders may be cancelled until {{ $order->created_at->copy()->addMinutes(15)->format('h:i:s A') }}.</p>
+                        @unless(auth()->user()->hasAnyRole(['admin', 'owner']))
+                            <p class="text-xs text-rose-900">Unprepared orders may be cancelled until {{ $order->created_at->copy()->addMinutes(15)->format('h:i:s A') }}.</p>
+                        @endunless
                         <form method="POST" action="{{ route('folios.orders.cancel', [$folio, $order]) }}">
                             @csrf
                             <input type="hidden" name="operation_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">

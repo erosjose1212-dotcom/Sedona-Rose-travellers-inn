@@ -58,6 +58,12 @@ class Order extends Model
             && now()->lte($this->created_at->copy()->addMinutes(15));
     }
 
+    public function canCancelAtCurrentTime(User $actor): bool
+    {
+        return $this->isWithinCancellationGrace()
+            || ($actor->hasAnyRole(['admin', 'owner']) && $this->created_at !== null && now()->gte($this->created_at));
+    }
+
     public function isPreparing(): bool
     {
         return $this->status === 'preparing';

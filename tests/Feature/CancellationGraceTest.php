@@ -187,6 +187,27 @@ class CancellationGraceTest extends TestCase
         $this->assertSame(9, $dish->fresh()->stock_quantity);
     }
 
+    #[TestWith(['admin'])]
+    #[TestWith(['owner'])]
+    public function test_admin_and_owner_can_cancel_an_older_unprepared_room_order(string $role): void
+    {
+        $cashier = $this->actor();
+        $folio = $this->folio($cashier);
+        $dish = $this->item('Porksilog', 'Breakfast', true);
+        $this->actingAs($cashier)->post(route('folios.addon', $folio), $this->key() + ['pos_item_id' => $dish->id, 'quantity' => 1])
+            ->assertSessionHasNoErrors();
+        $order = Order::firstOrFail();
+        $this->travel(1)->hours();
+
+        $this->actingAs($this->actor($role))->get(route('folios.orders.index', [$folio, 'show_previous' => 1]))
+            ->assertOk()->assertSee('Cancel order');
+        $this->post(route('folios.orders.cancel', [$folio, $order]), $this->key())->assertSessionHasNoErrors();
+
+        $this->assertSame('cancelled', $order->fresh()->status);
+        $this->assertSame('0.00', $folio->fresh()->pos_total);
+        $this->assertSame(10, $dish->fresh()->stock_quantity);
+    }
+
     public function test_wrong_stay_or_paid_order_cannot_be_cancelled(): void
     {
         $actor = $this->actor();

@@ -139,7 +139,7 @@ class GuestOrderService
             if (! $lockedFolio->isActive() || $lockedOrder->type !== 'room_charge' || ! $lockedOrder->isNew()) {
                 throw ValidationException::withMessages(['cancel' => 'Only unprepared, unpaid room orders on an active stay can be cancelled.']);
             }
-            if (! $lockedOrder->isWithinCancellationGrace()) {
+            if (! $lockedOrder->canCancelAtCurrentTime($request->user())) {
                 throw ValidationException::withMessages(['cancel' => 'The 15-minute cancellation window from order creation has expired.']);
             }
             if (BillingService::cents($lockedOrder->cash_tendered) > 0 || BillingService::cents($lockedOrder->gcash_amount) > 0
