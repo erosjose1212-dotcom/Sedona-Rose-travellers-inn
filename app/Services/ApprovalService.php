@@ -11,6 +11,7 @@ use App\Models\PaymentEntry;
 use App\Models\PosItem;
 use App\Models\Shift;
 use App\Models\StatementLine;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +50,11 @@ class ApprovalService
                     throw ValidationException::withMessages(['evidence_reference' => 'Record the accountant or exemption evidence reference.']);
                 }
                 $this->days->assertWritable($this->days->date($source->checked_out_at));
+            }
+            if ($kind === 'write_off') {
+                $billingAt = now()->startOfSecond();
+                $data = $this->validatePayload($kind, ['amount' => app(BillingService::class)->calculate($source, $billingAt)['finalBalanceToPay']]);
+                $data['billing_at'] = $billingAt->toIso8601String();
             }
             $approval = ApprovalRequest::create(['kind' => $kind, 'source_type' => $source::class, 'source_id' => $sourceId, 'requested_by' => $request->user()->id, 'payload' => $data, 'source_hash' => $this->fingerprint($source, $kind, $data), 'status' => 'pending', 'reason' => $reason, 'evidence_reference' => $evidence]);
             $this->audit->record($request, 'approval.requested', $approval, ['kind' => $kind, 'source_id' => $sourceId, 'payload' => $data, 'reason' => $reason, 'evidence_reference' => $evidence]);
@@ -150,9 +156,10 @@ class ApprovalService
             } elseif ($approval->kind === 'handover_variance') {
                 $source->update(['handover_status' => 'variance_approved']);
             } elseif ($approval->kind === 'write_off') {
-                $bill = app(BillingService::class)->calculate($source);
+                $billingAt = isset($data['billing_at']) ? Carbon::parse($data['billing_at']) : $approval->created_at;
+                $bill = app(BillingService::class)->calculate($source, $billingAt);
                 if (BillingService::cents($bill['finalBalanceToPay']) !== BillingService::cents($data['amount'])) {
-                    throw ValidationException::withMessages(['approval' => 'The bill changed. Request a new write-off approval.']);
+                    throw ValidationException::withMessages(['approval' => 'The saved amount no longer matches the bill at the request time. Open the guest bill and submit its current amount for review.']);
                 }
                 $source->fill($bill['attributes']);
                 $source->fill(['status' => 'checked_out', 'checked_out_at' => now(), 'checked_out_by' => $request->user()->id, 'force_checkout' => true, 'force_reason' => $approval->reason, 'force_by' => $approval->reviewed_by, 'force_requested_by' => $approval->requested_by, 'loss_slip_reference' => 'FCE-'.str_pad((string) $source->id, 6, '0', STR_PAD_LEFT), 'cash_tendered' => 0, 'gcash_amount' => 0, 'gcash_reference' => null, 'change_due' => 0])->save();
@@ -161,7 +168,8 @@ class ApprovalService
                 $source->room->update(['status' => 'available']);
             }
             $approval->update(['status' => 'executed', 'executed_by' => $request->user()->id, 'executed_at' => now()]);
-            $this->audit->record($request, 'approval.executed', $approval, ['kind' => $approval->kind, 'source_id' => $approval->source_id, 'payload' => $data]);
+            $this->audit->record($request, 'approval.executed', $approval, ['kind' => $approval->kind, 'source_id' => $approval->source_id,
+                'payload' => $data] + (isset($billingAt) ? ['billing_at' => $billingAt->toIso8601String()] : []));
 
             return ['approval_id' => $approval->id];
         });

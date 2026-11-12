@@ -33,6 +33,10 @@
                             <div><dt class="text-xs text-slate-500">{{ $label }}</dt><dd class="font-semibold break-words">{{ $value }}</dd></div>
                         @endforeach
                     </dl>
+                    @if($approval->kind === 'write_off' && $approval->source?->isActive())
+                        <p class="text-xs text-slate-600">The requested amount uses the bill at {{ $approval->created_at->format('m/d/Y h:i A') }}.</p>
+                        <a class="text-sm underline" href="{{ route('checkout.process', $approval->source) }}">Open guest bill</a>
+                    @endif
                     @if($approval->evidence_reference)<p class="text-sm"><strong>Evidence:</strong> {{ $approval->evidence_reference }}</p>@endif
                     @if($approval->reviewed_by)<p class="text-xs text-slate-600">Reviewed by {{ $approval->reviewer?->name ?? 'Staff #'.$approval->reviewed_by }} · {{ $approval->reviewed_at?->format('m/d/Y h:i A') }}<br>{{ $approval->review_note }}</p>@endif
                     @if($approval->executed_at)<p class="text-xs text-slate-600">Applied by {{ $approval->executor?->name ?? 'Staff #'.$approval->executed_by }} · {{ $approval->executed_at->format('m/d/Y h:i A') }}</p>@endif
@@ -54,11 +58,15 @@
                     @elseif($approval->status === 'pending' && auth()->user()->can('review-financial') && ($approval->requested_by !== auth()->id() || $approval->permitsOwnerSelfReview(auth()->user())))
                         <form method="POST" action="{{ route('approvals.review', $approval) }}" class="grid gap-2">
                             @csrf
+                            @if($approval->kind === 'write_off')
+                                <input type="hidden" name="apply_write_off" value="1">
+                                <input type="hidden" name="operation_key" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
+                            @endif
                             <label for="reviewNote{{ $approval->id }}" class="text-sm font-semibold">Review note</label>
                             <textarea id="reviewNote{{ $approval->id }}" name="note" required maxlength="1000" placeholder="What did you verify?" class="form-control-hms"></textarea>
-                            <button name="decision" value="approve" class="btn-occupied">{{ $approval->kind === 'expense_review' ? 'Approve expense review' : 'Approve request' }}</button>
+                            <button name="decision" value="approve" class="btn-occupied">{{ match ($approval->kind) { 'expense_review' => 'Approve expense review', 'write_off' => 'Approve and apply write-off', default => 'Approve request' } }}</button>
                             <button name="decision" value="reject" class="border border-rose-200 bg-rose-50 text-rose-800 rounded-lg px-3 py-2 text-sm font-semibold">Reject request</button>
-                            <p class="text-xs text-slate-500">{{ $approval->kind === 'expense_review' ? 'This expense was already paid. Approval completes its review.' : 'Approval records the decision. Apply the change from Ready to apply.' }}</p>
+                            <p class="text-xs text-slate-500">{{ match ($approval->kind) { 'expense_review' => 'This expense was already paid. Approval completes its review.', 'write_off' => 'Applies the requested write-off and checks out the room in one step.', default => 'Approval records the decision. Apply the change from Ready to apply.' } }}</p>
                         </form>
                     @elseif($approval->status === 'approved' && ($approval->requested_by === auth()->id() || auth()->user()->can('review-financial')))
                         <form method="POST" action="{{ route('approvals.execute', $approval) }}" class="grid gap-2">
@@ -66,7 +74,7 @@
                             @if(auth()->user()->can('review-financial') && in_array($approval->kind, ['deposit_refund', 'pos_refund', 'expense_reversal', 'cash_drop', 'float_addition', 'bank_deposit']))
                                 <label class="text-xs text-slate-600">Reason if covering another drawer<input name="shift_override_reason" maxlength="500" class="form-control-hms"></label>
                             @endif
-                            <button class="btn-occupied">Apply approved action</button>
+                            <button class="btn-occupied">{{ $approval->kind === 'write_off' ? 'Apply approved write-off' : 'Apply approved action' }}</button>
                             <p class="text-xs text-slate-500">Applies these approved details once and records the result in History.</p>
                         </form>
                     @else

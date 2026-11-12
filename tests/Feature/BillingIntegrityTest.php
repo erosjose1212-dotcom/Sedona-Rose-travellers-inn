@@ -325,7 +325,9 @@ class BillingIntegrityTest extends TestCase
         $this->assertEquals(160, $folio->net_total);
     }
 
-    public function test_force_loss_is_only_recorded_on_approval_with_a_stable_reference(): void
+    #[TestWith([false])]
+    #[TestWith([true])]
+    public function test_force_loss_is_only_recorded_on_approval_with_a_stable_reference(bool $approveAndApply): void
     {
         $folio = $this->folio(['security_deposit' => 100, 'deposit_status' => 'applied_to_bill']);
         $this->post(route('folios.force_checkout', $folio), ['operation_key' => (string) Str::uuid(), 'force_reason' => 'Guest left without paying'])->assertRedirect(route('approvals.index'));
@@ -334,7 +336,23 @@ class BillingIntegrityTest extends TestCase
         $this->get(route('folios.loss_slip', $folio))->assertStatus(409);
         Role::findOrCreate('admin', 'web');
         $this->cashier->assignRole('admin');
-        $this->executeLatestFinancialRequest();
+        if ($approveAndApply) {
+            $approval = ApprovalRequest::latest('id')->firstOrFail();
+            $reviewer = User::factory()->create()->assignRole('admin');
+            $reviewer->givePermissionTo(Permission::findOrCreate('view_all_shifts', 'web'), Permission::findOrCreate('manage_shifts', 'web'));
+            $data = ['decision' => 'approve', 'note' => 'Verified departure', 'apply_write_off' => 1, 'operation_key' => (string) Str::uuid()];
+            $this->travel(4)->hours();
+            $this->actingAs($reviewer)->get(route('approvals.index'))->assertOk()->assertSee('Approve and apply write-off');
+            $this->post(route('approvals.review', $approval), $data)->assertRedirect(route('approvals.index', ['status' => 'history']))->assertSessionHasNoErrors();
+            $this->post(route('approvals.review', $approval), $data)->assertSessionHasNoErrors();
+            $this->assertSame('executed', $approval->fresh()->status);
+            $this->actingAs($this->cashier);
+        } else {
+            $approval = $this->approveLatestFinancialRequest();
+            $approval->update(['payload' => ['amount' => $approval->payload['amount']]]);
+            $this->travel(4)->hours();
+            $this->executeLatestFinancialRequest();
+        }
         $folio->refresh();
         $this->assertEquals(295, $folio->net_total);
         $this->assertNotNull($folio->loss_slip_reference);

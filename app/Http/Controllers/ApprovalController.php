@@ -13,6 +13,8 @@ use App\Services\FinancialPostingService;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -94,6 +96,19 @@ class ApprovalController extends Controller
     {
         $data = $request->validate(['decision' => 'required|in:approve,reject', 'note' => 'required|string|max:1000']);
         try {
+            if ($approval->kind === 'write_off' && $data['decision'] === 'approve' && $request->boolean('apply_write_off')) {
+                Gate::authorize('review-financial');
+                DB::transaction(function () use ($request, $approval, $data): void {
+                    $current = ApprovalRequest::whereKey($approval->id)->lockForUpdate()->firstOrFail();
+                    if ($current->status !== 'executed' || $current->reviewed_by !== $request->user()->id) {
+                        $this->approvals->review($request, $current, true, $data['note']);
+                    }
+                    $this->approvals->execute($request, $current);
+                }, 3);
+
+                return redirect()->route('approvals.index', ['status' => 'history'])
+                    ->with('success', 'Write-off approved and applied. The room has been checked out.');
+            }
             $this->approvals->review($request, $approval, $data['decision'] === 'approve', $data['note']);
         } catch (HttpException $exception) {
             if ($exception->getStatusCode() !== 409
