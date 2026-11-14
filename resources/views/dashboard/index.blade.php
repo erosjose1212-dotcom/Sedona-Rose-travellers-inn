@@ -41,7 +41,8 @@
             <div class="shift-summary-details">
                 <span><b>{{ $myCheckIns ?? 0 }}</b> check-ins</span>
                 <span><b>{{ $myOrdersCount ?? 0 }}</b> orders</span>
-                <span class="shift-summary-amount"><small>Net sales</small> ₱{{ number_format($myShiftRevenue ?? 0, 2) }}</span>
+                <span><small>Net sales</small> ₱{{ number_format($myShiftRevenue ?? 0, 2) }}</span>
+                <span class="shift-summary-amount"><small>My Net Cash Collections</small> ₱{{ number_format($myShiftCashCollections, 2) }}</span>
             </div>
         </div>
     @endif

@@ -285,6 +285,12 @@ class AccountingController extends Controller
             fputcsv($handle, ['Matched Provider / Bank Fees', number_format($summary['providerFees'], 2, '.', '')]);
             fputcsv($handle, ['TOTAL OPERATING EXPENSES', number_format($summary['totalExpenses'] + $summary['providerFees'], 2, '.', '')]);
             fputcsv($handle, ['NET OPERATING PROFIT (EBITDA)', number_format($summary['profit'], 2, '.', '')]);
+            fputcsv($handle, []);
+            fputcsv($handle, ['PAYMENT COLLECTIONS', 'AMOUNT (PHP)']);
+            fputcsv($handle, ['Net Cash Collections', number_format($summary['cashCollections'], 2, '.', '')]);
+            fputcsv($handle, ['Net GCash Collections', number_format($summary['gcashCollections'], 2, '.', '')]);
+            fputcsv($handle, ['Total Net Collections', number_format($summary['cashCollections'] + $summary['gcashCollections'], 2, '.', '')]);
+            fputcsv($handle, ['Collections include deposits and refunds; they are not additional revenue. Provider fees are listed under operating expenses.']);
             fclose($handle);
         }, $filename, ['Content-Type' => 'text/csv']);
     }

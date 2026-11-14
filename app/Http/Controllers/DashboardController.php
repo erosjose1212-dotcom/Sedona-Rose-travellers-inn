@@ -12,6 +12,7 @@ use App\Models\Room;
 use App\Models\Shift;
 use App\Models\User;
 use App\Services\DiscountService;
+use App\Services\FinancialSummaryService;
 use App\Services\ShiftCalendar;
 use App\Services\ShiftReportService;
 use App\Services\StayRateService;
@@ -170,6 +171,7 @@ class DashboardController extends Controller
         // Personal shift performance (cashier scope: own folios/orders within active shift window).
         // Admins keep full BI in Reports; cashiers must never see global sales.
         $myShiftRevenue = 0.0;
+        $myShiftCashCollections = 0.0;
         $myCheckIns = 0;
         $myOrdersCount = 0;
         $myShiftLabel = 'No open shift';
@@ -181,7 +183,15 @@ class DashboardController extends Controller
             $usesDrawer = $ownsDrawer || $sharesDrawer;
             $hotelTime = now()->setTimezone('Asia/Manila');
             $reportShift = ShiftCalendar::shift($hotelTime);
-            $myPeriod = app(ShiftReportService::class)->period(null, $reportShift);
+            $myPeriod = app(ShiftReportService::class)->period(ShiftCalendar::date($hotelTime), $reportShift);
+            if ($activeShift && $request->user()->can('operate-shift', $activeShift)) {
+                $myShiftCashCollections = app(FinancialSummaryService::class)->operatorShift(
+                    $activeShift,
+                    $request->user(),
+                    $myPeriod['start']->setTimezone(config('app.timezone')),
+                    $myPeriod['end']->setTimezone(config('app.timezone')),
+                )['cashSales'];
+            }
             $myShiftStart = $myPeriod['start']->setTimezone(config('app.timezone'));
             if ($usesDrawer && $activeShift->opened_at->greaterThan($myShiftStart)) {
                 $myShiftStart = $activeShift->opened_at;
@@ -254,6 +264,7 @@ class DashboardController extends Controller
             'selectedFloor',
             'selectedStatus',
             'myShiftRevenue',
+            'myShiftCashCollections',
             'myCheckIns',
             'myOrdersCount',
             'myShiftLabel',

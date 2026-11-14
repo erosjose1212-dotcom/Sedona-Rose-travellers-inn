@@ -171,6 +171,8 @@ class AccountingTest extends TestCase
             ->assertOk()->assertViewHas('salesReturns', 30.0)
             ->assertViewHas('netRevenueCollected', 70.0)->assertViewHas('totalOpex', 7.0)->assertViewHas('netOperatingProfit', 63.0)
             ->assertSeeInOrder(['Sales Returns', 'NET SETTLED REVENUE'])
+            ->assertViewHas('gcashCollections', 70.0)
+            ->assertSeeInOrder(['Net GCash Collections', 'OPERATING REVENUE STREAMS'])
             ->assertSee('Other Sundry Expenses')->assertSee('Matched Provider / Bank Fees');
         $csv = $this->get(route('admin.accounting.pnl.csv', ['range' => 'today']))->assertOk()->streamedContent();
 
@@ -180,5 +182,8 @@ class AccountingTest extends TestCase
         $this->assertStringContainsString('Other,5.00', $csv);
         $this->assertStringContainsString('"Matched Provider / Bank Fees",2.00', $csv);
         $this->assertStringContainsString('"NET OPERATING PROFIT (EBITDA)",63.00', $csv);
+        $this->assertStringContainsString('"Net GCash Collections",70.00', $csv);
+        $this->assertStringContainsString('"Net Cash Collections",0.00', $csv);
+        $this->assertStringContainsString('"Total Net Collections",70.00', $csv);
     }
 }

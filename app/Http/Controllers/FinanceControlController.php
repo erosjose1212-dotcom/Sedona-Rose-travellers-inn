@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\AccountingExport;
 use App\Models\BusinessDay;
+use App\Models\CashMovement;
 use App\Models\Folio;
 use App\Models\Invoice;
 use App\Models\Order;
+use App\Models\PaymentEntry;
 use App\Models\Shift;
 use App\Models\StatementLine;
 use App\Services\AccountingExportService;
@@ -35,8 +37,33 @@ class FinanceControlController extends Controller
         $date = $request->validate(['date' => 'nullable|date_format:Y-m-d'])['date'] ?? $this->days->date();
 
         $day = BusinessDay::whereDate('business_date', $date)->first();
+        $snapshot = $day?->status === 'closed' ? $day->snapshot : $this->days->snapshot($date);
+        $statements = StatementLine::whereDate('business_date', $date)->latest('posted_at')
+            ->paginate(20, ['*'], 'statements_page')->withQueryString();
+        $statementIds = $statements->getCollection()->modelKeys();
+        $matchedStatementIds = DB::table('statement_matches')->whereIn('statement_line_id', $statementIds)->distinct()->pluck('statement_line_id')->all();
+        $excludedStatementIds = DB::table('statement_exclusions')->whereIn('statement_line_id', $statementIds)->pluck('statement_line_id')->all();
+        $unmatchedStatements = $statements->getCollection()->whereNotIn('id', array_merge($matchedStatementIds, $excludedStatementIds));
+        $paymentCandidates = PaymentEntry::with(['folio.room', 'order', 'user'])
+            ->whereIn('gcash_reference', $unmatchedStatements->where('provider', 'gcash')->pluck('reference'))
+            ->where('gcash_amount', '!=', 0)->where('user_id', '!=', $request->user()->id)
+            ->whereNotIn('id', DB::table('statement_matches')->whereNotNull('payment_entry_id')->select('payment_entry_id'))
+            ->orderBy('posted_at')->get()->groupBy('gcash_reference');
+        $bankCandidates = CashMovement::where('kind', 'bank_deposit')
+            ->whereIn('reference', $unmatchedStatements->where('provider', 'bank')->pluck('reference'))
+            ->where('user_id', '!=', $request->user()->id)
+            ->whereNotIn('id', DB::table('statement_matches')->whereNotNull('cash_movement_id')->select('cash_movement_id'))
+            ->orderBy('posted_at')->get()->groupBy('reference');
+        [, $periodEnd] = $this->days->bounds($date);
+        $cutoffPassed = now()->greaterThanOrEqualTo($periodEnd);
 
-        return view('accounting.controls', ['date' => $date, 'day' => $day, 'snapshot' => $day?->status === 'closed' ? $day->snapshot : $this->days->snapshot($date), 'versions' => $day ? DB::table('business_day_snapshots')->where('business_day_id', $day->id)->orderByDesc('version')->get() : collect(), 'days' => BusinessDay::latest('business_date')->paginate(15)->withQueryString(), 'statements' => StatementLine::latest('posted_at')->paginate(20, ['*'], 'statements_page')->withQueryString(), 'batches' => AccountingExport::latest()->paginate(10, ['*'], 'exports_page')->withQueryString(), 'balances' => Folio::with('guest')->where('status', 'active')->get()->map(fn (Folio $f): array => ['id' => $f->id, 'guest' => $f->guest?->name, 'deposit' => $f->security_deposit, 'balance' => app(BillingService::class)->calculate($f)['finalBalanceToPay']])]);
+        return view('accounting.controls', ['date' => $date, 'day' => $day, 'snapshot' => $snapshot,
+            'statements' => $statements, 'matchedStatementIds' => $matchedStatementIds, 'excludedStatementIds' => $excludedStatementIds,
+            'paymentCandidates' => $paymentCandidates, 'bankCandidates' => $bankCandidates, 'cutoffPassed' => $cutoffPassed,
+            'versions' => $day ? DB::table('business_day_snapshots')->where('business_day_id', $day->id)->orderByDesc('version')->get() : collect(),
+            'days' => BusinessDay::latest('business_date')->paginate(15)->withQueryString(),
+            'batches' => AccountingExport::latest()->paginate(10, ['*'], 'exports_page')->withQueryString(),
+            'balances' => Folio::with(['guest', 'room'])->where('status', 'active')->get()->map(fn (Folio $f): array => ['id' => $f->id, 'room' => $f->room?->number, 'guest' => $f->guest?->name, 'deposit' => $f->security_deposit, 'balance' => app(BillingService::class)->calculate($f)['finalBalanceToPay']])]);
     }
 
     public function import(Request $request): RedirectResponse
@@ -56,8 +83,11 @@ class FinanceControlController extends Controller
 
     public function match(Request $request, StatementLine $statement): RedirectResponse
     {
-        $data = $request->validate(['entries' => 'required|string|max:2000']);
-        $tokens = array_map('trim', explode(',', $data['entries']));
+        $data = $request->validate([
+            'entries' => is_array($request->input('entries')) ? 'required|array|min:1|max:100' : 'required|string|max:2000',
+            'entries.*' => 'required|integer|min:1',
+        ]);
+        $tokens = is_array($data['entries']) ? array_map('strval', $data['entries']) : array_map('trim', explode(',', $data['entries']));
         foreach ($tokens as $token) {
             if (! ctype_digit($token) || (int) $token < 1) {
                 throw ValidationException::withMessages(['entries' => 'Use comma-separated movement IDs.']);

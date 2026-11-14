@@ -10,6 +10,8 @@ use App\Models\PaymentEntry;
 use App\Models\Room;
 use App\Models\Shift;
 use App\Models\User;
+use App\Services\ShiftCalendar;
+use Carbon\Carbon;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -69,6 +71,36 @@ class DashboardReviewIntegrityTest extends TestCase
         PaymentEntry::create(['user_id' => $cashier->id, 'order_id' => $order->id, 'kind' => 'pos_refund', 'cash_amount' => -30, 'gcash_amount' => 0, 'posted_at' => now()]);
 
         $this->actingAs($cashier)->get(route('dashboard'))->assertOk()->assertViewHas('myShiftRevenue', 170.0)->assertSee('Net sales');
+    }
+
+    public function test_front_desk_cash_matches_the_cashier_drawer_for_the_night_shift(): void
+    {
+        $this->withoutVite();
+        config(['sedona.continuous_shift_enabled' => true]);
+        $this->travelTo(Carbon::parse('2026-11-09 12:00', 'Asia/Manila'));
+        $this->seed(DatabaseSeeder::class);
+        ShiftCalendar::scheduleCutover('2026-11-10');
+        $this->travelTo(Carbon::parse('2026-11-11 19:29', 'Asia/Manila'));
+        $cashier = User::where('email', 'pau@sedonapms.com')->firstOrFail();
+        $otherCashier = User::factory()->create();
+        $shift = Shift::create(['opened_by' => $otherCashier->id, 'opened_at' => now()->subDays(27),
+            'shift_date' => today()->subDays(27), 'shift_type' => 'night']);
+        $settled = $this->folio(['status' => 'checked_out', 'checked_out_at' => now()->subMinute(),
+            'checked_out_by' => $cashier->id, 'gross_total' => 5470, 'net_total' => 5470]);
+        $open = $this->folio();
+        PaymentEntry::create(['kind' => 'settlement', 'folio_id' => $settled->id, 'user_id' => $cashier->id,
+            'shift_id' => $shift->id, 'cash_amount' => 5470, 'posted_at' => now()->subMinute()]);
+        PaymentEntry::create(['kind' => 'deposit', 'folio_id' => $open->id, 'user_id' => $cashier->id,
+            'shift_id' => $shift->id, 'cash_amount' => 2000, 'posted_at' => now()->subMinutes(30)]);
+        PaymentEntry::create(['kind' => 'deposit', 'folio_id' => $open->id, 'user_id' => $otherCashier->id,
+            'shift_id' => $shift->id, 'cash_amount' => 900, 'posted_at' => now()->subMinutes(15)]);
+        PaymentEntry::create(['kind' => 'deposit', 'folio_id' => $open->id, 'user_id' => $cashier->id,
+            'shift_id' => $shift->id, 'cash_amount' => 700, 'posted_at' => now()->setTime(16, 59)]);
+
+        $this->actingAs($cashier)->get(route('shifts.index'))->assertOk()
+            ->assertViewHas('cashRevenue', 7470.0)->assertSee('7,470.00');
+        $this->get(route('dashboard'))->assertOk()->assertViewHas('myShiftRevenue', 5470.0)
+            ->assertViewHas('myShiftCashCollections', 7470.0)->assertSee('My Net Cash Collections')->assertSee('7,470.00');
     }
 
     /** @param array<string, mixed> $values */

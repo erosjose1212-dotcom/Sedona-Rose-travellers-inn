@@ -58,6 +58,28 @@
         </section>
     @endif
 
+    <section class="hms-card space-y-3" aria-labelledby="payment-collections-heading">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="payment-collections-heading" class="font-bold text-slate-800">Payment collections · {{ $rangeLabel }}</h2>
+            <a href="{{ route('transactions.index') }}" class="text-xs font-semibold text-blue-700 underline">View payment journal</a>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="rounded border border-emerald-200 bg-emerald-50 p-3">
+                <p class="text-xs font-bold text-emerald-900">Net Cash Collections</p>
+                <p class="mt-1 text-2xl font-bold font-mono text-emerald-900">₱{{ number_format($cashCollections, 2) }}</p>
+            </div>
+            <div class="rounded border border-blue-200 bg-blue-50 p-3">
+                <p class="text-xs font-bold text-blue-900">Net GCash Collections</p>
+                <p class="mt-1 text-2xl font-bold font-mono text-blue-900">₱{{ number_format($gcashCollections, 2) }}</p>
+            </div>
+            <div class="rounded border border-slate-200 bg-slate-50 p-3">
+                <p class="text-xs font-bold text-slate-700">Total Net Collections</p>
+                <p class="mt-1 text-2xl font-bold font-mono text-slate-900">₱{{ number_format($cashCollections + $gcashCollections, 2) }}</p>
+            </div>
+        </div>
+        <p class="text-xs text-slate-600">Money received less refunds during this period, including guest deposits. These totals are not additional revenue or the cash left in the drawer. GCash provider fees are shown under operating expenses.</p>
+    </section>
+
     <!-- Executive KPI Row -->
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
         <div class="bg-white p-3 border-l-4 border-emerald-600 shadow-sm">
@@ -168,17 +190,6 @@
                     </div>
                 </div>
 
-                <!-- Payment Channel Split -->
-                <div class="mt-4 pt-3 border-t border-slate-200 grid grid-cols-2 gap-2 text-xs">
-                    <div class="p-2 bg-slate-50 border border-slate-200">
-                        <span class="font-bold text-slate-500 uppercase text-[10px] block">Net Cash Collections</span>
-                        <span class="font-mono font-bold text-emerald-700 text-sm">₱{{ number_format($cashCollections, 2) }}</span>
-                    </div>
-                    <div class="p-2 bg-slate-50 border border-slate-200">
-                        <span class="font-bold text-slate-500 uppercase text-[10px] block">Net GCash Collections</span>
-                        <span class="font-mono font-bold text-blue-700 text-sm">₱{{ number_format($gcashCollections, 2) }}</span>
-                    </div>
-                </div>
             </div>
         </div>
 
