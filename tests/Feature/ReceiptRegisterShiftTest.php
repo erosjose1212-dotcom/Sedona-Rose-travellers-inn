@@ -97,13 +97,36 @@ class ReceiptRegisterShiftTest extends TestCase
         $this->get(route('dashboard', ['shift_date' => '2026-10-17']))->assertViewHas('shiftActivity', fn ($data): bool => $data['shifts']['day']['check_ins'] === ['stays' => 1, 'guests' => 3]);
     }
 
+    public function test_shift_card_displays_voids_and_write_offs_in_their_closing_shift(): void
+    {
+        $actor = $this->actor('owner');
+        $voided = $this->stay($actor, '2026-10-17 18:00:00', '2026-10-17 18:30:00');
+        $voided->update(['status' => 'voided', 'receipt_number' => null, 'receipt_issued_at' => null]);
+        $writeOff = $this->stay($actor, '2026-10-17 16:00:00', '2026-10-17 18:29:59');
+        $writeOff->update(['force_checkout' => true]);
+        $pending = $this->stay($actor, '2026-10-17 17:00:00', '2026-10-17 18:00:00');
+        $pending->update(['status' => 'active', 'force_checkout' => true, 'checked_out_at' => null]);
+        $staff = $this->stay($actor, '2026-10-17 18:00:00', '2026-10-17 18:30:00');
+        $staff->update(['status' => 'voided']);
+        $staff->room->update(['is_staff_quarters' => true]);
+
+        $response = $this->actingAs($actor)->get(route('dashboard', ['shift_date' => '2026-10-17']))
+            ->assertOk()->assertSee('Voided stays')->assertSee('Write-offs');
+        $shifts = $response->viewData('shiftActivity')['shifts'];
+        $this->assertSame(['voided_stays' => 0, 'write_offs' => 1], $shifts['day']['checkout_breakdown']);
+        $this->assertSame(['voided_stays' => 1, 'write_offs' => 0], $shifts['night']['checkout_breakdown']);
+        $this->assertSame(['stays' => 2, 'guests' => 4], $shifts['day']['check_ins']);
+        $this->assertSame(['stays' => 1, 'guests' => 2], $shifts['day']['check_outs']);
+        $this->assertSame(['stays' => 0, 'guests' => 0], $shifts['night']['check_outs']);
+    }
+
     #[TestWith(['cashier'])]
     #[TestWith(['manager'])]
     #[TestWith(['front_desk'])]
     public function test_other_roles_do_not_receive_shift_activity_data_or_widget(string $role): void
     {
         $this->actingAs($this->actor($role))->get(route('dashboard'))->assertOk()->assertViewHas('shiftActivity', null)
-            ->assertDontSee('Check-ins and checkouts by shift');
+            ->assertDontSee('Check-ins and checkouts by shift')->assertDontSee('Voided stays')->assertDontSee('Write-offs');
     }
 
     public function test_pagination_preserves_shift_and_totals_and_invalid_filters_are_rejected(): void

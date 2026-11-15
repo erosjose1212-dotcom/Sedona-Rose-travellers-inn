@@ -35,6 +35,7 @@ class ShiftReportService
             $shifts[$shift] = $period + [
                 'check_ins' => $this->counts($period['start'], $period['end'], 'checked_in_at'),
                 'check_outs' => $this->counts($period['start'], $period['end'], 'checked_out_at'),
+                'checkout_breakdown' => $this->checkoutBreakdown($period['start'], $period['end']),
             ];
         }
 
@@ -67,17 +68,33 @@ class ShiftReportService
         return ['activity' => $this->activity($date), 'rooms' => $rooms, 'transfers' => $transfers, 'occupancyAt' => now()->setTimezone('Asia/Manila')];
     }
 
+    /** @return array{voided_stays: int, write_offs: int} */
+    private function checkoutBreakdown(CarbonImmutable $start, CarbonImmutable $end): array
+    {
+        $counts = $this->foliosInPeriod($start, $end, 'checked_out_at')
+            ->selectRaw("SUM(CASE WHEN status = 'voided' THEN 1 ELSE 0 END) as voided_stays")
+            ->selectRaw("SUM(CASE WHEN status = 'checked_out' AND force_checkout THEN 1 ELSE 0 END) as write_offs")
+            ->first();
+
+        return ['voided_stays' => (int) $counts->voided_stays, 'write_offs' => (int) $counts->write_offs];
+    }
+
     /** @return array{stays: int, guests: int} */
     private function counts(CarbonImmutable $start, CarbonImmutable $end, string $timestamp): array
     {
-        $counts = Folio::where('folios.status', '!=', 'voided')
+        $counts = $this->foliosInPeriod($start, $end, $timestamp)
+            ->where('folios.status', '!=', 'voided')
             ->when($timestamp === 'checked_out_at', fn (Builder $query): Builder => $query->where('folios.status', 'checked_out'))
-            ->whereHas('room', fn (Builder $query): Builder => $query->where('is_staff_quarters', false))
-            ->where('folios.'.$timestamp, '>=', $start->setTimezone(config('app.timezone')))
-            ->where('folios.'.$timestamp, '<', $end->setTimezone(config('app.timezone')))
             ->join('guests', 'guests.id', '=', 'folios.guest_id')
             ->selectRaw('COUNT(*) as stays, COALESCE(SUM(guests.headcount), 0) as guests')->first();
 
         return ['stays' => (int) $counts->stays, 'guests' => (int) $counts->guests];
+    }
+
+    private function foliosInPeriod(CarbonImmutable $start, CarbonImmutable $end, string $timestamp): Builder
+    {
+        return Folio::whereHas('room', fn (Builder $query): Builder => $query->where('is_staff_quarters', false))
+            ->where('folios.'.$timestamp, '>=', $start->setTimezone(config('app.timezone')))
+            ->where('folios.'.$timestamp, '<', $end->setTimezone(config('app.timezone')));
     }
 }

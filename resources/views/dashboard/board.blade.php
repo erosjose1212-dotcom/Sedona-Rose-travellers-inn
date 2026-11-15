@@ -47,10 +47,17 @@
                                 <td class="text-center"><strong class="text-base text-emerald-800">{{ $activity['check_ins']['stays'] }}</strong><span class="block text-[10px] text-slate-500">{{ $activity['check_ins']['guests'] }} guests</span></td>
                                 <td class="text-center"><a class="font-bold text-base text-[#421A2B] underline" href="{{ route('receipts.index', ['date' => $shiftActivity['date'], 'shift' => $shiftKey]) }}">{{ $activity['check_outs']['stays'] }}</a><span class="block text-[10px] text-slate-500">{{ $activity['check_outs']['guests'] }} guests</span></td>
                             </tr>
+                            <tr>
+                                <td colspan="3" class="pb-3 text-center text-[10px] text-slate-600">
+                                    Voided stays <strong>{{ $activity['checkout_breakdown']['voided_stays'] }}</strong>
+                                    <span aria-hidden="true"> · </span>
+                                    Write-offs <strong>{{ $activity['checkout_breakdown']['write_offs'] }}</strong>
+                                </td>
+                            </tr>
                         @endforeach
                     </tbody>
                 </table>
-                <p class="text-[10px] text-slate-500 mt-2">Counts room stays, including guests who have already left. Cancelled stays and staff quarters are excluded.</p>
+                <p class="text-[10px] text-slate-500 mt-2">Voids count in the shift they were cancelled. Write-offs are included in checkouts.</p>
             </section>
         @endif
 
