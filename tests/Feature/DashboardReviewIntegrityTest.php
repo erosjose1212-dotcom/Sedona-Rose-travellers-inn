@@ -20,6 +20,16 @@ class DashboardReviewIntegrityTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_server_clock_is_authenticated_and_cannot_be_cached(): void
+    {
+        $this->travelTo(Carbon::parse('2026-11-15 07:15:00', 'Asia/Manila'));
+
+        $this->getJson(route('server-time'))->assertUnauthorized();
+        $this->actingAs(User::factory()->create())->getJson(route('server-time'))
+            ->assertOk()->assertExactJson(['timestamp' => now()->getTimestampMs()])
+            ->assertHeaderContains('Cache-Control', 'no-store');
+    }
+
     public function test_cancelled_write_off_is_not_shown_as_a_pending_dashboard_task(): void
     {
         $this->withoutVite();

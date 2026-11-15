@@ -21,6 +21,7 @@ use App\Http\Controllers\RoomController;
 use App\Http\Controllers\ShiftController;
 use App\Http\Controllers\TransactionHistoryController;
 use App\Http\Controllers\UserController;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Route;
 
 // Public / Guest Routes
@@ -39,6 +40,9 @@ Route::get('/lobby-kiosk', [DashboardController::class, 'kioskView'])->name('kio
 // Authenticated HMS Routes
 Route::middleware(['auth', 'auth.session', 'active_account'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+    Route::get('/server-time', function (): JsonResponse {
+        return response()->json(['timestamp' => now()->getTimestampMs()], 200, ['Cache-Control' => 'no-store, private']);
+    })->name('server-time');
     Route::middleware('permission:manage_shifts|manage_folios|post_pos_sales')->group(function () {
         Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
         Route::post('/approvals', [ApprovalController::class, 'store'])->name('approvals.store');

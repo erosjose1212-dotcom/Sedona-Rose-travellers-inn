@@ -90,8 +90,8 @@ test('checkout alarms ring fifteen minutes before, at checkout, and fifteen minu
     const attributes = { 'data-room-id': '8', 'data-room-number': '8', 'data-folio-id': '1', 'data-guest-name': 'Test guest' };
     const row = { getAttribute: name => name === 'data-checkout-time' ? new Date(checkout).toISOString() : attributes[name], querySelector: () => null };
     const document = { querySelectorAll: () => [row] };
-    const window = {};
-    runInNewContext(`${source}\nwindow.Engine = SedonaAudioEngine;`, { window, document, Date: class extends Date { static now() { return clock; } } });
+    const window = { sedonaClock: { now: () => clock } };
+    runInNewContext(`${source}\nwindow.Engine = SedonaAudioEngine;`, { window, document, Date: class extends Date { static now() { return clock + 16 * 3600000; } } });
     const engine = Object.create(window.Engine.prototype);
     let mode;
     engine.isRoomSnoozed = () => false;
@@ -131,7 +131,7 @@ for (const view of ['index', 'tv']) {
         const blade = readFileSync(new URL(`../../resources/views/kitchen/${view}.blade.php`, import.meta.url), 'utf8');
         const source = blade.slice(blade.lastIndexOf('<script>') + 8, blade.lastIndexOf('</script>')).replace(/\{\{[^]*?\}\}/g, '2');
         const document = documentWith(['tv-clock', 'tv-date']);
-        const window = {};
+        const window = { sedonaClock: { now: () => Date.parse('2026-10-14T10:00:00+08:00') } };
         const stored = new Map();
         let chimes = 0;
         runInNewContext(source, { document, window, sessionStorage: { getItem: key => stored.get(key), setItem: (key, value) => stored.set(key, value) }, setInterval() {}, setTimeout() {} });
@@ -147,7 +147,7 @@ test('checkin preview reads each configured rate from the HTML dataset keys', ()
     const blade = readFileSync(new URL('../../resources/views/dashboard/partials/folio-modals.blade.php', import.meta.url), 'utf8');
     const source = blade.slice(blade.indexOf('let currentRoomRates ='), blade.indexOf('const FOLIO_EXTENSION_OPTIONS ='));
     const document = documentWith(['checkInRoomId', 'checkInModalTitle', 'checkInDateTime', 'checkInDateTimeDisplay', 'checkInTierSelect', 'checkInRatePreview', 'checkInModal', 'checkInOpenTimeNotice']);
-    const context = { document, setInterval() {}, clearInterval() {} };
+    const context = { document, window: { sedonaClock: { now: () => Date.parse('2026-10-14T10:00:00+08:00') } }, setInterval() {}, clearInterval() {} };
     runInNewContext(source, context);
     const roomDataset = { roomId: '12', roomNumber: '201', roomType: 'Classic', 'rate-3h': '395', 'rate-6h': '777', 'rate-12h': '975', 'rate-24h': '1700', ratePromo: '750' };
     context.openCheckInModal(roomDataset);
@@ -275,18 +275,62 @@ test('checkout requires a reference only when a GCash payment is entered', () =>
     assert.equal(document.elements.inpGcashRef.required, true);
 });
 
-test('checkout estimate follows the live clock and keeps the full fifteen minute grace', () => {
+test('server clock advances by elapsed time and resyncs after a connection interruption', async () => {
+    const blade = readFileSync(new URL('../../resources/views/layouts/server-clock.blade.php', import.meta.url), 'utf8');
+    const initial = Date.parse('2026-11-15T07:15:00+08:00');
+    const source = blade.slice(blade.indexOf('<script>') + 8, blade.indexOf('</script>'))
+        .replace('@json(now()->getTimestampMs())', String(initial))
+        .replace('@json($refreshClock ?? null)', '"/server-time"');
+    const listeners = {};
+    const window = { addEventListener: (event, callback) => { listeners[event] = callback; } };
+    let elapsed = 10;
+    let requests = 0;
+    let online = false;
+    runInNewContext(source, {
+        window,
+        document: { visibilityState: 'visible', addEventListener() {} },
+        performance: { now: () => elapsed },
+        Date: class extends Date { static now() { return initial + 16 * 3600000; } },
+        AbortSignal,
+        setInterval() {},
+        fetch: async (url, options) => {
+            assert.equal(url, '/server-time');
+            assert.equal(options.cache, 'no-store');
+            requests++;
+            if (!online) throw new Error('Disconnected');
+
+            return { ok: true, json: async () => ({ timestamp: initial + 5000 }) };
+        },
+    });
+
+    assert.equal(window.sedonaClock.now(), initial);
+    elapsed += 1000;
+    await listeners.pageshow();
+    assert.equal(window.sedonaClock.now(), initial + 1000);
+    online = true;
+    await listeners.online();
+    assert.equal(requests, 2);
+    assert.equal(window.sedonaClock.now(), initial + 5000);
+    elapsed += 250;
+    assert.equal(window.sedonaClock.now(), initial + 5250);
+});
+
+test('checkout estimate follows server time despite a cashier clock 16 hours ahead', () => {
     const blade = readFileSync(new URL('../../resources/views/checkout/process.blade.php', import.meta.url), 'utf8');
     const source = blade.slice(blade.indexOf('function onCheckInTimeChange('), blade.indexOf('function onRoomRateChange('));
     const document = documentWith(['inpActualStayDiff', 'inpExcessOvertime', 'inpAddHoursRate']);
-    const checkIn = '2026-10-14T04:04:58+08:00';
+    const checkIn = '2026-11-15T07:13:00+08:00';
     const checkout = Date.parse(checkIn) + 3 * 3600000;
-    let clock = checkout + 900000;
+    let clock = Date.parse('2026-11-15T07:15:00+08:00');
     let saves = 0;
-    const context = { document, Date: class extends Date { static now() { return clock; } }, checkOutTimestamp: checkout,
+    const context = { document, window: { sedonaClock: { now: () => clock } }, Date: class extends Date { static now() { return clock + 16 * 3600000; } }, checkOutTimestamp: checkout,
         totalBookedHours: 3, overstayGraceMs: 900000, xtendHours: 0, addHourUnitPrice: 130,
         checkInSaveTimer: null, recalcGrossAndSettlement() {}, clearTimeout() {}, setTimeout() { saves++; } };
     runInNewContext(source, context);
+    context.onCheckInTimeChange(checkIn);
+    assert.equal(document.elements.inpExcessOvertime.value, '0 Hours');
+    assert.equal(context.addHoursRate, 0);
+    clock = checkout + 900000;
     context.onCheckInTimeChange(checkIn);
     assert.equal(document.elements.inpExcessOvertime.value, '0 Hours');
     clock += 1000;
@@ -351,7 +395,7 @@ test('midnight promo live checkout estimate keeps fractional booked hours throug
     const checkIn = '2026-10-15T23:15:37+08:00';
     const cutoff = Date.parse('2026-10-16T06:00:00+08:00');
     let clock = cutoff + 900000;
-    const context = { document, Date: class extends Date { static now() { return clock; } }, checkOutTimestamp: cutoff,
+    const context = { document, window: { sedonaClock: { now: () => clock } }, Date: class extends Date { static now() { return clock + 16 * 3600000; } }, checkOutTimestamp: cutoff,
         totalBookedHours: (cutoff - Date.parse(checkIn)) / 3600000, overstayGraceMs: 900000, xtendHours: 0, addHourUnitPrice: 130,
         checkInSaveTimer: null, recalcGrossAndSettlement() {}, clearTimeout() {}, setTimeout() {} };
     runInNewContext(source, context);

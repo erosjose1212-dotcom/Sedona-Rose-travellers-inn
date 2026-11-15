@@ -564,7 +564,7 @@
         if (!val) return;
         const cInDate = new Date(val);
         if (isNaN(cInDate.getTime())) return;
-        checkOutTimestamp = Date.now();
+        checkOutTimestamp = window.sedonaClock.now();
         const checkoutDisplay = document.getElementById('checkoutTimeDisplay');
         if (checkoutDisplay) {
             checkoutDisplay.value = new Date(checkOutTimestamp).toLocaleString('en-US', { timeZone: 'Asia/Manila',

@@ -52,7 +52,7 @@ function audioHarness(play = () => Promise.resolve(), clock = () => Date.now(), 
             return gain;
         }
     }
-    const window = { AudioContext, addEventListener(name, action) { listeners[name] = action; }, removeEventListener() {} };
+    const window = { AudioContext, sedonaClock: { now: clock }, addEventListener(name, action) { listeners[name] = action; }, removeEventListener() {} };
     const storage = { getItem(key) { return stored.get(key) ?? null; }, setItem(key, value) { stored.set(key, value); } };
     const document = { getElementById() { return null; }, querySelectorAll() { return []; } };
     const source = readFileSync(new URL('../../resources/js/audio.js', import.meta.url), 'utf8').split('// Global instance')[0];

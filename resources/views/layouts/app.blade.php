@@ -6,6 +6,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="theme-color" content="#572039">
     <title>@yield('title', 'Dashboard') | {{ config('sedona.hotel_name') }}</title>
+    @include('layouts.server-clock', ['refreshClock' => route('server-time', absolute: false)])
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
 </head>
@@ -296,9 +297,9 @@
             }
         });
         function updateHmsClock() {
-            const now = new Date();
-            const date = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            const now = new Date(window.sedonaClock.now());
+            const date = now.toLocaleDateString('en-US', { timeZone: 'Asia/Manila', month: 'short', day: 'numeric' });
+            const time = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: true });
             document.getElementById('live-hms-time').textContent = `${date} · ${time}`;
         }
         setInterval(updateHmsClock, 1000);

@@ -6,20 +6,18 @@ import { runInNewContext } from 'node:vm';
 test('check-in displays Manila time without submitting a cashier editable timestamp', () => {
     const blade = readFileSync(new URL('../../resources/views/dashboard/partials/folio-modals.blade.php', import.meta.url), 'utf8');
     const source = blade.slice(blade.indexOf('function syncCheckInLiveTime()'), blade.indexOf('function openCheckInModal('));
+    const serverTime = Date.parse('2026-10-08T16:15:00.000Z');
     class DeviceDate extends Date {
-        constructor() {
-            super('2026-10-08T16:15:00.000Z');
+        constructor(timestamp = serverTime + 16 * 3600000) {
+            super(timestamp);
         }
-
-        getFullYear() { return 2026; }
-        getMonth() { return 9; }
-        getDate() { return 8; }
-        getHours() { return 9; }
-        getMinutes() { return 15; }
-        getSeconds() { return 0; }
     }
     const elements = { checkInDateTimeDisplay: {} };
-    const context = { Date: DeviceDate, document: { getElementById: id => elements[id] } };
+    const context = {
+        Date: DeviceDate,
+        window: { sedonaClock: { now: () => serverTime } },
+        document: { getElementById: id => elements[id] },
+    };
     runInNewContext(source, context);
 
     context.syncCheckInLiveTime();

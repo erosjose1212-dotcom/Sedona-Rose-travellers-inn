@@ -438,14 +438,14 @@ class SedonaAudioEngine {
      * Snooze room for X minutes (default 5m)
      */
     snoozeRoom(roomId, minutes = 5) {
-        this.snoozedRooms[roomId] = Date.now() + (minutes * 60 * 1000);
+        this.snoozedRooms[roomId] = window.sedonaClock.now() + (minutes * 60 * 1000);
         this.evaluateAlarms();
     }
 
     isRoomSnoozed(roomId) {
         const snoozeUntil = this.snoozedRooms[roomId];
         if (!snoozeUntil) return false;
-        if (Date.now() < snoozeUntil) return true;
+        if (window.sedonaClock.now() < snoozeUntil) return true;
         delete this.snoozedRooms[roomId];
         return false;
     }
@@ -500,7 +500,8 @@ class SedonaAudioEngine {
     evaluateAlarms() {
         // Query occupied room rows or cards across table and board views
         const roomElements = document.querySelectorAll('[data-room-id][data-checkout-time]');
-        const now = Date.now();
+        const now = window.sedonaClock?.now();
+        if (!Number.isFinite(now)) return;
 
         let highestActiveStage = null; // 3 > 2 > 1 > null
         const activeAlarmRooms = [];

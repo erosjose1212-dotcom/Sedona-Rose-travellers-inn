@@ -283,7 +283,7 @@
     let checkInClockInterval = null;
 
     function syncCheckInLiveTime() {
-        const now = new Date();
+        const now = new Date(window.sedonaClock.now());
 
         const displayEl = document.getElementById('checkInDateTimeDisplay');
         if (displayEl) {
@@ -316,7 +316,7 @@
         document.getElementById('checkInOpenTimeNotice')?.classList.toggle('hidden', tier !== 'open');
         if (tier === 'open' && document.getElementById('checkInOpenTimeNotice')) {
             const format = time => new Date(time).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit', hour12: true });
-            const baseEnd = Date.now() + 3 * 3600000;
+            const baseEnd = window.sedonaClock.now() + 3 * 3600000;
             document.getElementById('checkInOpenTimeNotice').textContent = `No fixed checkout. 3-hour base ends at ${format(baseEnd)}; grace ends at ${format(baseEnd + 15 * 60000)}. Then ₱130 per additional hour or part thereof until checkout. Hourly reminders do not restart grace.`;
         }
     }

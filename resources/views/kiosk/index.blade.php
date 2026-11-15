@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@700;800&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
 
+    @include('layouts.server-clock')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
@@ -180,7 +181,7 @@
 
     <script>
         function updateDisplayClock() {
-            const now = new Date();
+            const now = new Date(window.sedonaClock.now());
             const timeStr = now.toLocaleTimeString('en-US', {
                 timeZone: 'Asia/Manila',
                 hour: '2-digit',
