@@ -25,7 +25,7 @@ class BillingService
         }
         $totalBookedHours = $tierHours + $xtendHours;
         $elapsedSeconds = max(0, $folio->checked_in_at->diffInSeconds($checkOutTime, false));
-        $actualHoursDiff = max(1, (int) ceil($elapsedSeconds / 3600));
+        $elapsedMinutes = (int) floor($elapsedSeconds / 60);
         $graceSeconds = max(0, (int) config('sedona.overstay_grace_minutes', 15)) * 60;
         $billableOverstaySeconds = max(0, $elapsedSeconds - round($totalBookedHours * 3600) - $graceSeconds);
         $excessHours = $settled ? (int) $folio->overtime_hours : ($includeOvertime ? (int) ceil($billableOverstaySeconds / 3600) : 0);
@@ -80,7 +80,7 @@ class BillingService
 
         return [
             'checkInTime' => $folio->checked_in_at, 'checkOutTime' => $checkOutTime, 'expectedCheckoutAt' => $folio->expected_checkout_at,
-            'tierHours' => $tierHours, 'xtendHours' => $xtendHours, 'totalBookedHours' => $totalBookedHours, 'actualHoursDiff' => $actualHoursDiff, 'excessHours' => $excessHours,
+            'tierHours' => $tierHours, 'xtendHours' => $xtendHours, 'totalBookedHours' => $totalBookedHours, 'elapsedMinutes' => $elapsedMinutes, 'excessHours' => $excessHours,
             'xtendRate' => $xtendHours * 130, 'excessRate' => $excessHours * 130, 'addHoursRate' => $hoursCents / 100,
             'roomRate' => $roomCents / 100, 'addOnItems' => $addOnItems, 'addOnsTotal' => ($posCents + $extraCents) / 100,
             'subTotal' => $grossCents / 100, 'totalCharge' => $grossCents / 100, 'grossTotal' => $grossCents / 100,

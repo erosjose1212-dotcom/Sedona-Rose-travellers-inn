@@ -329,6 +329,11 @@ test('checkout estimate follows server time despite a cashier clock 16 hours ahe
     runInNewContext(source, context);
     context.onCheckInTimeChange(checkIn);
     assert.equal(document.elements.inpExcessOvertime.value, '0 Hours');
+    assert.equal(document.elements.inpActualStayDiff.value, '0h 2m');
+    assert.equal(context.addHoursRate, 0);
+    clock = Date.parse('2026-11-15T08:14:00+08:00');
+    context.onCheckInTimeChange(checkIn);
+    assert.equal(document.elements.inpActualStayDiff.value, '1h 1m');
     assert.equal(context.addHoursRate, 0);
     clock = checkout + 900000;
     context.onCheckInTimeChange(checkIn);

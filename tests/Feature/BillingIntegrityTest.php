@@ -51,6 +51,22 @@ class BillingIntegrityTest extends TestCase
         return Folio::create(array_replace(['room_id' => $this->room->id, 'guest_id' => $guest->id, 'user_id' => $this->cashier->id, 'transaction_id' => Folio::generateTransactionId(), 'rate_tier' => '3h', 'checked_in_at' => now()->subHour(), 'expected_checkout_at' => now()->addHours(2), 'status' => 'active', 'room_charge' => 395, 'discount_type' => 'NONE', 'payment_method' => 'cash', 'pos_items' => []], $attributes));
     }
 
+    public function test_checkout_displays_elapsed_time_and_scheduled_checkout_separately(): void
+    {
+        $this->withoutVite();
+        $this->travelTo(Carbon::parse('2026-11-15 08:19:00', 'Asia/Manila'));
+        $folio = $this->folio([
+            'checked_in_at' => now()->setTime(7, 18),
+            'expected_checkout_at' => now()->setTime(10, 18),
+        ]);
+
+        $this->get(route('checkout.process', $folio))->assertOk()
+            ->assertSee('BILL AS OF:')->assertSee('id="checkoutTimeDisplay" value="11/15/2026 08:19 AM"', false)
+            ->assertSee('SCHEDULED CHECKOUT:')->assertSee('value="11/15/2026 10:18 AM"', false)
+            ->assertSee('id="inpActualStayDiff" value="1h 1m"', false)
+            ->assertViewHas('excessHours', 0)->assertViewHas('finalBalanceToPay', 395.0);
+    }
+
     public function test_workspace_layout_displays_validation_messages_for_pages_without_a_local_alert(): void
     {
         $this->withoutVite();

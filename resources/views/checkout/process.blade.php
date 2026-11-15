@@ -148,7 +148,7 @@
                     </div>
 
                     <div class="flex items-center">
-                        <label class="w-36 font-bold text-slate-700 text-[11px]">CHECK OUT TIME:</label>
+                        <label class="w-36 font-bold text-slate-700 text-[11px]">BILL AS OF:</label>
                         <input type="text" id="checkoutTimeDisplay" value="{{ $checkOutTime->format('m/d/Y h:i A') }}" readonly tabindex="-1" style="pointer-events: none; background-color: #f1f5f9; user-select: none; border-color: #cbd5e1;" class="form-control-hms !text-left text-[11px] font-mono">
                     </div>
 
@@ -158,11 +158,16 @@
                     </div>
                 </div>
 
-                <!-- Col 3: Booked Stay, Xtend, Actual Stay Diff, Excess Overtime -->
+                <!-- Col 3: Booked Stay, Xtend, Elapsed Stay, Excess Overtime -->
                 <div class="space-y-2">
                     <div class="flex items-center">
                         <label class="w-44 font-bold text-slate-700 text-[11px]">BOOKED STAY:</label>
                         <input type="text" value="{{ $folio->isOpenTime() ? 'Open Time (3-hour base)' : ($folio->rate_tier === 'promo' ? 'Midnight promo (6 AM checkout)' : $tierHours.' Hours ('.strtoupper($folio->rate_tier).')') }}" readonly tabindex="-1" style="pointer-events: none; background-color: #f1f5f9; user-select: none; border-color: #cbd5e1;" class="form-control-hms font-mono">
+                    </div>
+
+                    <div class="flex items-center">
+                        <label class="w-44 font-bold text-slate-700 text-[11px]" for="scheduledCheckoutDisplay">SCHEDULED CHECKOUT:</label>
+                        <input type="text" id="scheduledCheckoutDisplay" value="{{ $folio->isOpenTime() ? 'Open Time' : ($expectedCheckoutAt?->format('m/d/Y h:i A') ?? '—') }}" readonly tabindex="-1" class="form-control-hms font-mono">
                     </div>
 
                     <div class="flex items-center">
@@ -171,8 +176,8 @@
                     </div>
 
                     <div class="flex items-center">
-                        <label class="w-44 font-bold text-slate-700 text-[11px]">ACTUAL STAY DIFF:</label>
-                        <input type="text" id="inpActualStayDiff" value="{{ $actualHoursDiff }} Hours" readonly tabindex="-1" style="pointer-events: none; background-color: #f1f5f9; user-select: none; border-color: #cbd5e1;" class="form-control-hms font-mono">
+                        <label class="w-44 font-bold text-slate-700 text-[11px]">TOTAL TIME USED:</label>
+                        <input type="text" id="inpActualStayDiff" value="{{ intdiv($elapsedMinutes, 60) }}h {{ $elapsedMinutes % 60 }}m" readonly tabindex="-1" style="pointer-events: none; background-color: #f1f5f9; user-select: none; border-color: #cbd5e1;" class="form-control-hms font-mono">
                     </div>
 
                     <div class="flex items-center">
@@ -572,13 +577,13 @@
         }
 
         const diffMs = Math.max(0, checkOutTimestamp - cInDate.getTime());
-        const actualHoursDiff = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60)));
+        const elapsedMinutes = Math.floor(diffMs / 60000);
         const billableOverstayMs = Math.max(0, diffMs - Math.round(totalBookedHours * 60 * 60 * 1000) - overstayGraceMs);
         const excessHours = Math.ceil(billableOverstayMs / (60 * 60 * 1000));
         addHoursRate = (xtendHours + excessHours) * addHourUnitPrice;
 
         const inpActualStayDiff = document.getElementById('inpActualStayDiff');
-        if (inpActualStayDiff) inpActualStayDiff.value = `${actualHoursDiff} Hours`;
+        if (inpActualStayDiff) inpActualStayDiff.value = `${Math.floor(elapsedMinutes / 60)}h ${elapsedMinutes % 60}m`;
 
         const inpExcessOvertime = document.getElementById('inpExcessOvertime');
         if (inpExcessOvertime) inpExcessOvertime.value = `${excessHours} Hours`;
