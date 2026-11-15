@@ -148,8 +148,8 @@
                     </div>
 
                     <div class="flex items-center">
-                        <label class="w-36 font-bold text-slate-700 text-[11px]">BILL AS OF:</label>
-                        <input type="text" id="checkoutTimeDisplay" value="{{ $checkOutTime->format('m/d/Y h:i A') }}" readonly tabindex="-1" style="pointer-events: none; background-color: #f1f5f9; user-select: none; border-color: #cbd5e1;" class="form-control-hms !text-left text-[11px] font-mono">
+                        <label class="w-36 font-bold text-slate-700 text-[11px]" for="scheduledCheckoutDisplay">SCHEDULED CHECKOUT:</label>
+                        <input type="text" id="scheduledCheckoutDisplay" value="{{ $folio->isOpenTime() ? 'Open Time' : ($expectedCheckoutAt?->format('m/d/Y h:i A') ?? '—') }}" readonly tabindex="-1" style="pointer-events: none; background-color: #f1f5f9; user-select: none; border-color: #cbd5e1;" class="form-control-hms !text-left text-[11px] font-mono">
                     </div>
 
                     <div class="flex items-center">
@@ -166,8 +166,8 @@
                     </div>
 
                     <div class="flex items-center">
-                        <label class="w-44 font-bold text-slate-700 text-[11px]" for="scheduledCheckoutDisplay">SCHEDULED CHECKOUT:</label>
-                        <input type="text" id="scheduledCheckoutDisplay" value="{{ $folio->isOpenTime() ? 'Open Time' : ($expectedCheckoutAt?->format('m/d/Y h:i A') ?? '—') }}" readonly tabindex="-1" class="form-control-hms font-mono">
+                        <label class="w-44 font-bold text-slate-700 text-[11px]" for="billingAsOfDisplay">BILL AS OF:</label>
+                        <input type="text" id="billingAsOfDisplay" value="{{ $checkOutTime->format('m/d/Y h:i A') }}" readonly tabindex="-1" class="form-control-hms font-mono">
                     </div>
 
                     <div class="flex items-center">
@@ -570,9 +570,9 @@
         const cInDate = new Date(val);
         if (isNaN(cInDate.getTime())) return;
         checkOutTimestamp = window.sedonaClock.now();
-        const checkoutDisplay = document.getElementById('checkoutTimeDisplay');
-        if (checkoutDisplay) {
-            checkoutDisplay.value = new Date(checkOutTimestamp).toLocaleString('en-US', { timeZone: 'Asia/Manila',
+        const billingAsOfDisplay = document.getElementById('billingAsOfDisplay');
+        if (billingAsOfDisplay) {
+            billingAsOfDisplay.value = new Date(checkOutTimestamp).toLocaleString('en-US', { timeZone: 'Asia/Manila',
                 month: '2-digit', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
         }
 

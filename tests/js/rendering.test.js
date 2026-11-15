@@ -318,7 +318,8 @@ test('server clock advances by elapsed time and resyncs after a connection inter
 test('checkout estimate follows server time despite a cashier clock 16 hours ahead', () => {
     const blade = readFileSync(new URL('../../resources/views/checkout/process.blade.php', import.meta.url), 'utf8');
     const source = blade.slice(blade.indexOf('function onCheckInTimeChange('), blade.indexOf('function onRoomRateChange('));
-    const document = documentWith(['inpActualStayDiff', 'inpExcessOvertime', 'inpAddHoursRate']);
+    const document = documentWith(['inpActualStayDiff', 'inpExcessOvertime', 'inpAddHoursRate', 'scheduledCheckoutDisplay', 'billingAsOfDisplay']);
+    document.elements.scheduledCheckoutDisplay.value = '11/15/2026 10:13 AM';
     const checkIn = '2026-11-15T07:13:00+08:00';
     const checkout = Date.parse(checkIn) + 3 * 3600000;
     let clock = Date.parse('2026-11-15T07:15:00+08:00');
@@ -334,6 +335,8 @@ test('checkout estimate follows server time despite a cashier clock 16 hours ahe
     clock = Date.parse('2026-11-15T08:14:00+08:00');
     context.onCheckInTimeChange(checkIn);
     assert.equal(document.elements.inpActualStayDiff.value, '1h 1m');
+    assert.match(document.elements.billingAsOfDisplay.value, /08:14 AM/);
+    assert.equal(document.elements.scheduledCheckoutDisplay.value, '11/15/2026 10:13 AM');
     assert.equal(context.addHoursRate, 0);
     clock = checkout + 900000;
     context.onCheckInTimeChange(checkIn);

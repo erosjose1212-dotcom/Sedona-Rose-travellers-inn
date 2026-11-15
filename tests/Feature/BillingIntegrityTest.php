@@ -61,8 +61,9 @@ class BillingIntegrityTest extends TestCase
         ]);
 
         $this->get(route('checkout.process', $folio))->assertOk()
-            ->assertSee('BILL AS OF:')->assertSee('id="checkoutTimeDisplay" value="11/15/2026 08:19 AM"', false)
-            ->assertSee('SCHEDULED CHECKOUT:')->assertSee('value="11/15/2026 10:18 AM"', false)
+            ->assertSeeInOrder(['CHECK IN TIME:', 'SCHEDULED CHECKOUT:', 'BILL AS OF:'])
+            ->assertSee('id="billingAsOfDisplay" value="11/15/2026 08:19 AM"', false)
+            ->assertSee('id="scheduledCheckoutDisplay" value="11/15/2026 10:18 AM"', false)
             ->assertSee('id="inpActualStayDiff" value="1h 1m"', false)
             ->assertViewHas('excessHours', 0)->assertViewHas('finalBalanceToPay', 395.0);
     }
