@@ -180,6 +180,63 @@ class CourtOperationsChangeTest extends TestCase
         $this->assertSame('5:00 AM–5:00 PM', ShiftCalendar::label('2026-11-10', 'day'));
     }
 
+    public function test_six_oh_one_cutover_preserves_earlier_schedules_and_assigns_each_payment_once(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-09 12:00', 'Asia/Manila'));
+        ShiftCalendar::scheduleCutover('2026-11-10');
+        $this->travelTo(CarbonImmutable::parse('2026-11-16 12:00', 'Asia/Manila'));
+        $this->artisan('pms:schedule-shift-cutover', ['date' => '2026-11-17', '--time' => '06:01'])->assertSuccessful();
+        $this->artisan('pms:schedule-shift-cutover', ['date' => '2026-11-17', '--time' => '06:01'])->assertSuccessful();
+        $this->artisan('pms:schedule-shift-cutover', ['date' => '2026-11-18', '--time' => '06:01'])->assertFailed();
+
+        $finance = app(BusinessDayService::class);
+        $user = User::factory()->create();
+        $this->assertSame('6:30 AM–6:30 PM', ShiftCalendar::label('2026-11-09', 'day'));
+        $this->assertSame('5:00 PM–next 5:00 AM', ShiftCalendar::label('2026-11-15', 'night'));
+        $this->assertSame('5:00 PM–next 6:01 AM', ShiftCalendar::label('2026-11-16', 'night'));
+        $this->assertSame('6:01 AM–6:01 PM', ShiftCalendar::label('2026-11-17', 'day'));
+        $this->assertSame('6:01 PM–next 6:01 AM', ShiftCalendar::label('2026-11-17', 'night'));
+
+        foreach ([
+            ['2026-11-17 06:00:59', '2026-11-16', 'night'],
+            ['2026-11-17 06:01:00', '2026-11-17', 'day'],
+            ['2026-11-17 18:00:59', '2026-11-17', 'day'],
+            ['2026-11-17 18:01:00', '2026-11-17', 'night'],
+        ] as [$timestamp, $date, $shift]) {
+            $at = CarbonImmutable::parse($timestamp, 'Asia/Manila');
+            $this->assertSame($date, $finance->date($at));
+            $this->assertSame($shift, ShiftCalendar::shift($at));
+
+            $payment = PaymentEntry::create([
+                'user_id' => $user->id, 'kind' => 'pos_sale', 'cash_amount' => 130,
+                'gcash_amount' => 0, 'posted_at' => $at->setTimezone(config('app.timezone')),
+            ]);
+            $paymentsByDay[$date][] = $payment->id;
+        }
+
+        foreach ($paymentsByDay as $date => $ids) {
+            $this->assertSame($ids, array_column($finance->snapshot($date)['payments'], 'id'));
+        }
+    }
+
+    public function test_six_oh_one_cutover_rejects_postings_since_the_original_cutoff(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-09 12:00', 'Asia/Manila'));
+        ShiftCalendar::scheduleCutover('2026-11-10');
+        $this->travelTo(CarbonImmutable::parse('2026-11-16 12:00', 'Asia/Manila'));
+        $postedAt = CarbonImmutable::parse('2026-11-17 05:30', 'Asia/Manila');
+        PaymentEntry::create([
+            'user_id' => User::factory()->create()->id, 'kind' => 'pos_sale', 'cash_amount' => 130,
+            'gcash_amount' => 0, 'posted_at' => $postedAt->setTimezone(config('app.timezone')),
+        ]);
+
+        $this->artisan('pms:schedule-shift-cutover', ['date' => '2026-11-17', '--time' => '06:01'])
+            ->expectsOutput('Existing postings or a day-close snapshot overlap the proposed cutover.')
+            ->assertFailed();
+        $this->assertSame('2026-11-17', ShiftCalendar::date($postedAt));
+        $this->assertSame('5:00 AM–5:00 PM', ShiftCalendar::label('2026-11-17', 'day'));
+    }
+
     private function operator(string $role): User
     {
         $user = User::factory()->create()->assignRole(Role::findOrCreate($role, 'web'));

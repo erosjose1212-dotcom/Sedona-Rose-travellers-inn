@@ -45,16 +45,18 @@ Artisan::command('pms:reset-transactions {--force : Confirm deletion of all tran
     return 0;
 })->purpose('Back up and clear transactions while keeping accounts, catalog, stock and configuration');
 
-Artisan::command('pms:schedule-shift-cutover {date : Future Manila date in YYYY-MM-DD format}', function (): int {
+Artisan::command('pms:schedule-shift-cutover {date : Future Manila date in YYYY-MM-DD format} {--time=05:00 : Manila start time, 05:00 or 06:01}', function (): int {
+    $date = $this->argument('date');
+    $time = (string) $this->option('time');
     try {
-        ShiftCalendar::scheduleCutover($this->argument('date'));
+        ShiftCalendar::scheduleCutover($date, $time);
     } catch (InvalidArgumentException $exception) {
         $this->error($exception->getMessage());
 
         return 1;
     }
 
-    $this->info('5 AM / 5 PM reporting is scheduled for '.$this->argument('date').' at 5:00 AM Manila time.');
+    $this->info('Reporting cutover scheduled for '.$date.' at '.($time === '06:01' ? '6:01 AM' : '5:00 AM').' Manila time.');
 
     return 0;
 })->purpose('Save the one-time Manila reporting schedule cutover');
